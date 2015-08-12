@@ -1,0 +1,69 @@
+﻿{
+  "configuration": {
+    "enviroment": [
+      {
+        "name": "Test",
+        "application": [
+          {
+            "name": "app1",
+            "connectionstring": {
+              "name": "sqlDB",
+              "connectionString": "Data Source=(LocalDb)\\v11.0;AttachDbFilename=|DataDirectory|\\TEST.mdf;Initial Catalog=TEST;Integrated Security=True",
+              "providerName": "System.Data.SqlClient"
+            },
+            "serviceModel": {
+              "client": {
+                "endpoint": {
+                  "name": "AppService",
+                  "address": "127.0.0.1"
+                }
+              }
+            }
+          },
+          {
+            "name": "app2",
+            "port": "8091",
+            "connectionstring": {
+              "name": "sqlDB",
+              "connectionString": "Data Source=(LocalDb)\\v11.0;AttachDbFilename=|DataDirectory|\\TEST.mdf;Initial Catalog=TEST;Integrated Security=True",
+              "providerName": "System.Data.SqlClient"
+            },
+            "serviceModel": {
+              "client": {
+                "endpoint": {
+                  "name": "AppService",
+                  "address": "127.0.0.2"
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Production",
+        "application": [
+          {
+            "name": "app1",
+            "connectionstring": {
+              "name": "sqlDB",
+              "connectionString": "Data Source=(LocalDb)\\v11.0;AttachDbFilename=|DataDirectory|\\PROD.mdf;Initial Catalog=PROD;Integrated Security=True",
+              "providerName": "System.Data.SqlClient"
+            },
+            "serviceModel": {
+              "client": {
+                "endpoint": {
+                  "name": "AppService",
+                  "address": "201.100.100.100"
+                }
+              }
+            }
+          },
+          {
+            "name": "app2",
+            "port": "8092"
+          }
+        ]
+      }
+    ]
+  }
+}

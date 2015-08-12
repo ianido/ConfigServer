@@ -1,0 +1,168 @@
+﻿{
+    "configuration": {
+	    "global" : {
+		    "MailServer" : "mail.amadeus.com",
+			"Welcome" : "Welcome to config Server"
+		},
+        "base": {
+            "defaultApplication": {
+                "name": "Default"
+            },
+            "applications": [
+                {
+                    "inherits": "*configuration.base.defaultApplication",
+                    "name": "LogServer",
+                    "ServerAddr": "127.0.0.1",
+					"MailServer": "*configuration.global.Welcome"
+					
+                },
+                {
+                    "inherits": "*configuration.base.defaultApplication",
+                    "name": "CommonData",
+                    "systemServiceModel": {
+                        "behaviors": {
+                            "endpointBehaviors": {
+                                "behavior": {
+                                    "name": "BizServerBehavior",
+                                    "dataContractSerializer": { "maxItemsInObjectGraph": "2147483647" }
+                                }
+                            }
+                        },
+                        "bindings": {
+                            "netTcpBinding": {
+                                "binding": {
+                                    "name": "CommonsManager",
+                                    "closeTimeout": "00:02:00",
+                                    "openTimeout": "00:02:00",
+                                    "receiveTimeout": "00:02:00",
+                                    "sendTimeout": "00:02:00",
+                                    "transactionFlow": "false",
+                                    "transferMode": "Buffered",
+                                    "maxBufferPoolSize": "1000000000",
+                                    "maxBufferSize": "1000000000",
+                                    "maxReceivedMessageSize": "1000000000",
+                                    "portSharingEnabled": "false",
+                                    "readerQuotas": {
+                                        "maxDepth": "1000000000",
+                                        "maxStringContentLength": "1000000000",
+                                        "maxArrayLength": "1000000000",
+                                        "maxBytesPerRead": "1000000000",
+                                        "maxNameTableCharCount": "1000000000"
+                                    },
+                                    "security": {
+                                        "mode": "None",
+                                        "transport": { "protectionLevel": "None" }
+                                    }
+                                }
+                            }
+                        },
+                        "client": {
+                            "endpoint": [
+                                {
+                                    "address": "net.tcp://localhost:8030/CommonsManager/CommonsManager",
+                                    "binding": "netTcpBinding",
+                                    "bindingConfiguration": "CommonsManager",
+                                    "behaviorConfiguration": "BizServerBehavior",
+                                    "contract": "CommonDataService.ICommons",
+                                    "name": "CommonsManager"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+            "defaultEnviroment": {
+                "name": "Default",
+                "applications": "*configuration.base.applications"
+            }
+        },
+        "enviroments": [		    
+            {
+                "inherits": "*configuration.base.defaultEnviroment",
+                "name": "Production",
+                "applications": [
+                    {
+                        "name": "LogServer",
+                        "ServerAddr": "Production.logserver"
+                    },
+                    {
+                        "name": "CommonData",
+                        "systemServiceModel": {
+                            "client": {
+                                "endpoint": [
+                                    {
+                                        "name": "CommonsManager",
+                                        "address": "net.tcp://production:8030/CommonsManager/CommonsManager"
+                                    }
+                                ]
+                            }
+
+                        }
+                    }
+                ]
+            },
+            {
+                "inherits": "*configuration.base.defaultEnviroment",
+                "name": "Test",
+                "applications": [
+                    {
+                        "name": "LogServer",
+                        "ServerAddr": "Test.logserver"
+                    },
+                    {
+                        "name": "CommonData",
+                        "systemServiceModel": {
+                            "client": {
+                                "endpoint": [
+                                    {
+                                        "name": "CommonsManager",
+                                        "address": "net.tcp://test:8030/CommonsManager/CommonsManager"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+			{
+                "inherits": "*configuration.enviroments[@Test]",
+                "name": "Test1",
+                "applications": [                    
+                    {
+                        "name": "CommonData",
+                        "systemServiceModel": {
+                            "client": {
+                                "endpoint": [
+                                    {
+                                        "name": "CommonsManager",
+                                        "address": "net.tcp://test1:8030/CommonsManager/CommonsManager"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+			{
+                "inherits": "*configuration.base.defaultEnviroment",
+                "name": "Null",
+                "applications": [                    
+                    {
+                        "name": "CommonData",
+                        "systemServiceModel": {
+                            "client": {
+                                "endpoint": [
+                                    {
+                                        "name": "CommonsManager",
+                                        "address": "net.tcp://null:8030/CommonsManager/CommonsManager"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+}
+		

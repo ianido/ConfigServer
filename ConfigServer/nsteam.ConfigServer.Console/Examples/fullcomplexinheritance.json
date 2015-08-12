@@ -1,0 +1,53 @@
+﻿{
+    "configuration": {
+        "base": {
+            "field0": "value0",
+            "fieldObject": [ 
+                {
+                    "name": "element1",
+                    "subfield1": "subvalue11",
+                    "subfield2": "subvalue21"
+                }
+            ]
+        },
+        "baseobject": {
+            "inherits": "*configuration.base",
+            "field0": "value0X",
+            "field1": "value1",
+            "fieldObject": [
+                {
+                    "name": "element1",
+                    "subfield1": "subvalue1A",
+                    "subfield2": "subvalue2A"
+                },
+                {
+                    "name": "element2",
+                    "subfield1": "subvalue1B",
+                    "subfield2": "subvalue2B"
+                }
+            ]
+        },
+        "newobject": {
+            "inherits": "*configuration.baseobject",
+            "field0": "value0XY",
+            "field1": "value1XY",
+            "field2": "value2XY",
+            "fieldObject": [
+                {
+                    "name": "element2",
+                    "subfield1": "subvalue1X"
+                },
+                {
+                    "name": "element3",
+                    "subfield1": "subvalue1Y",
+                    "subfield2": "subvalue2Y"
+                },
+                {
+                    "name": "element4",
+                    "subfield1": "subvalue1Z"
+                }
+            ]
+        }
+    }
+}
+		

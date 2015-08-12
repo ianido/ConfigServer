@@ -1,0 +1,45 @@
+﻿{
+    "configuration": {
+        "global": {
+            "MailServer": "mail.amadeus.com",
+            "Welcome": "Welcome to config Server"
+        },
+        "base": {
+            "defaultModule": {
+                "name": "Default"
+            },
+            "modules": [
+                {
+                    "inherits": "*configuration.base.defaultModule",
+                    "name": "Dashboard"
+                }
+            ],
+            "defaultEnviroment": {
+                "name": "Default",
+                "applications": "*configuration.base.modules",
+                "SMTPServer": "mail.yupiservices.com",
+                "DefaultConnection": {
+                    "connectionString": "",
+                    "providerName": "System.Data.SqlClient"
+                }
+            }
+        },
+        "enviroments": [
+            {
+                "inherits": "*configuration.base.defaultEnviroment",
+                "name": "Production",
+                "DefaultConnection": {
+                    "connectionString": "Data Source=(LocalDb)\v11.0;AttachDbFilename=|DataDirectory|\MasterCRM-PRD.mdf;Initial Catalog=MasterCRM-PRD;Integrated Security=True"
+                }                
+            },
+            {
+                "inherits": "*configuration.base.defaultEnviroment",
+                "name": "Test",
+                "DefaultConnection": {
+                    "connectionString": "Data Source=(LocalDb)\v11.0;AttachDbFilename=|DataDirectory|\MasterCRM-TEST.mdf;Initial Catalog=MasterCRM-TEST;Integrated Security=True"
+                }              
+            }            
+        ]
+    }
+}
+		

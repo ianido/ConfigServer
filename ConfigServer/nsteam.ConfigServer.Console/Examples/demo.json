@@ -1,0 +1,60 @@
+﻿{
+    "configuration": {
+        "global": {
+            "ResponseTimeOut": "180",
+            "SMTPServer": "mail.com"
+        },
+        "defaultApplication": {
+            "name": "Default",
+            "port": "1080"
+        },
+        "applications": [
+            {
+                "inherits": "*configuration.defaultApplication",
+                "name": "LogServer",
+                "address": "127.0.0.1",
+                "TimeOut": "*configuration.global.ResponseTimeOut"
+            },
+            {
+                "inherits": "*configuration.defaultApplication",
+                "name": "CommonData",
+                "port": "1010",
+                "url": "http://127.0.0.1/Common"
+            }
+        ],
+        "defaultEnviroment": {
+            "name": "Development",
+            "applications": "*configuration.applications"
+        },
+        "enviroments": [
+            {
+                "inherits": "*configuration.defaultEnviroment",
+                "name": "Test",
+                "applications": [
+                    {
+                        "name": "LogServer",
+                        "address": "DEVSERVER"
+                    }
+                ]
+            },
+            {
+                "inherits": "*configuration.defaultEnviroment",
+                "name": "Production",
+                "applications": [
+                    {
+                        "name": "LogServer",
+                        "address": "PRODSERVER"
+                    },
+                    {
+                        "name": "CommonData",
+                        "url": "http://127.0.0.1/Common"
+                    },
+                    {
+                        "name": "NewApp",
+                        "url": "http://127.0.0.1/Common"
+                    }
+                ]
+            }
+        ]
+    }
+}
