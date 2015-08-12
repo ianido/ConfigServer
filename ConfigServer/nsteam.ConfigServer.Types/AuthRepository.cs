@@ -93,7 +93,7 @@ namespace nsteam.ConfigServer.Types
             }
             catch (Exception ex)
             {
-                _logger.FatalException("ValidateClient Error.", ex);
+                _logger.Fatal(ex, "ValidateClient Error.");
                 return null;
             }
         }

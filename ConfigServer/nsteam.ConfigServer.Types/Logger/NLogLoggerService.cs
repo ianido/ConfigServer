@@ -45,23 +45,23 @@ namespace nsteam.ConfigServer.Types
             {
                 case EventType.Info:
                     {
-                        _logger.InfoException(message, ex);
+                        _logger.Info(ex, message);
                     } break;
                 case EventType.Debug:
                     {
-                        _logger.DebugException(message, ex);
+                        _logger.Debug(ex, message);
                     } break;
                 case EventType.Error:
                     {
-                        _logger.ErrorException(message, ex);
+                        _logger.Error(ex, message);
                     } break;
                 case EventType.Fatal:
                     {
-                        _logger.FatalException(message, ex);
+                        _logger.Fatal(ex, message);
                     } break;
                 case EventType.Warn:
                     {
-                        _logger.WarnException(message, ex);
+                        _logger.Warn(ex, message);
                     } break;
             }
         }
