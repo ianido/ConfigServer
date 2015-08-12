@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
     <metadata>
         <id>nsteam.ConfigServer.Client</id>
         <version>1.0.0</version>
@@ -8,15 +8,19 @@
         <description>Client for Config Server</description>
         <copyright>Near Solutions Team 2015</copyright>
         <language>en-US</language>
-        <frameworkAssemblies>
-            <frameworkAssembly assemblyName="Microsoft.CSharp" targetFramework=".NETFramework4.0.30319" />
-            <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.0.30319" />
-            <frameworkAssembly assemblyName="System.Configuration" targetFramework=".NETFramework4.0.30319" />
-            <frameworkAssembly assemblyName="Newtonsoft.Json" targetFramework=".NETFramework4.0.30319" />
-            <frameworkAssembly assemblyName="System.Net.Http" targetFramework=".NETFramework4.0.30319" />
-            <frameworkAssembly assemblyName="System.Net.Http.WebRequest" targetFramework=".NETFramework4.0.30319" />
-            <frameworkAssembly assemblyName="System.Web.Helpers" targetFramework=".NETFramework4.0.30319" />
-        </frameworkAssemblies>
+        <dependencies>
+            <group targetFramework=".NETFramework4.0">
+                <dependency id="Microsoft.Net.Http" version="2.0.20710.0" />
+                <dependency id="Newtonsoft.Json" version="6.0.8" />
+                <dependency id="microsoft-web-helpers" version="2.1.20710.2" />
+            </group>
+            <group targetFramework=".NETFramework4.5">
+                <dependency id="Newtonsoft.Json" version="6.0.8" />
+                <dependency id="Microsoft.Net.Http" version="2.2.29" />
+            </group>
+        </dependencies>
     </metadata>
-    <files />
+    <files>
+        <file src="bin\Debug\nsteam.ConfigServer.Client.dll" target="lib\nsteam.ConfigServer.Client.dll" />
+    </files>
 </package>
