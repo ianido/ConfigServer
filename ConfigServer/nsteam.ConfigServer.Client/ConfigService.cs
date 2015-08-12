@@ -1,18 +1,7 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Globalization;
-using System.IO;
-using System.Net;
+﻿using System;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Reflection;
-using System.Runtime.Serialization.Formatters;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Web.Helpers;
 
 namespace nsteam.ConfigServer.Client
 {
