@@ -96,7 +96,7 @@ namespace nsteam.ConfigServer
             }
             catch (Exception ex)
             {
-                _logger.FatalException("GetSetting Error.", ex);
+                _logger.Fatal(ex, "GetSetting Error.");
             }
         }
 
