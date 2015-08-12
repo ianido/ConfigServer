@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>nsteam.ConfigServer.Client</id>
+        <version>1.0.0</version>
+        <authors>Israel Garcia</authors>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Client for Config Server</description>
+        <copyright>Near Solutions Team 2015</copyright>
+        <language>en-US</language>
+        <frameworkAssemblies>
+            <frameworkAssembly assemblyName="Microsoft.CSharp" targetFramework=".NETFramework4.0.30319" />
+            <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.0.30319" />
+            <frameworkAssembly assemblyName="System.Configuration" targetFramework=".NETFramework4.0.30319" />
+            <frameworkAssembly assemblyName="Newtonsoft.Json" targetFramework=".NETFramework4.0.30319" />
+            <frameworkAssembly assemblyName="System.Net.Http" targetFramework=".NETFramework4.0.30319" />
+            <frameworkAssembly assemblyName="System.Net.Http.WebRequest" targetFramework=".NETFramework4.0.30319" />
+            <frameworkAssembly assemblyName="System.Web.Helpers" targetFramework=".NETFramework4.0.30319" />
+        </frameworkAssemblies>
+    </metadata>
+    <files />
+</package>
