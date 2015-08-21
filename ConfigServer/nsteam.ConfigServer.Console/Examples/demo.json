@@ -1,7 +1,7 @@
 ﻿{
     "configuration": {
         "global": {
-            "ResponseTimeOut": "180",
+            "ResponseTimeOut": "181",
             "SMTPServer": "mail.com"
         },
         "defaultApplication": {

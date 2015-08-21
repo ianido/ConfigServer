@@ -119,7 +119,8 @@ namespace nsteam.ConfigServer.Types
         {            
             lock (objlock)
             {
-                if ((e.ChangeType == WatcherChangeTypes.Changed) && (NumberofChanges < 1))
+                //if ((e.ChangeType == WatcherChangeTypes.Changed) && (NumberofChanges < 1)) // This version of filewatcher only fires once
+                if ((e.ChangeType == WatcherChangeTypes.Changed))  
                 {
                     _logger.Log("Configuration file changed.", EventType.Warn);
                     _root = null; // invalidate the document and reload                    
