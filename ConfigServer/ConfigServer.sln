@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.ConfigServer.WinServ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.ConfigServer.Console", "nsteam.ConfigServer.Console\nsteam.ConfigServer.Console.csproj", "{6D6A72BB-38AC-4546-90A4-56F3E818DABD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.ConfigServer.Provider", "nsteam.ConfigServer.Provider\nsteam.ConfigServer.Provider.csproj", "{89A4106F-F0DB-483A-8550-E9C07B051EA2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,14 @@ Global
 		{6D6A72BB-38AC-4546-90A4-56F3E818DABD}.Prod|Any CPU.Build.0 = Prod|Any CPU
 		{6D6A72BB-38AC-4546-90A4-56F3E818DABD}.Release|Any CPU.ActiveCfg = Prod|Any CPU
 		{6D6A72BB-38AC-4546-90A4-56F3E818DABD}.Release|Any CPU.Build.0 = Prod|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Dev|Any CPU.ActiveCfg = Debug|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Dev|Any CPU.Build.0 = Debug|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Prod|Any CPU.ActiveCfg = Release|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Prod|Any CPU.Build.0 = Release|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
