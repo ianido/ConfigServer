@@ -30,9 +30,8 @@ namespace nsteam.ConfigServer.Provider
 
             dynamic obj = cfg.GetTree();
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
-            Data["CfgServerSettings"] = json;
-            //JsonConfigurationFileParser parser = new JsonConfigurationFileParser();
-            //Data = parser.Parse(json);
+            JsonConfigurationFileParser parser = new JsonConfigurationFileParser();
+            Data = parser.Parse("{ CfgServer:" + json + " }");            
         }
 
     }
