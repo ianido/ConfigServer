@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -44,14 +45,25 @@ namespace nsteam.ConfigServer.Client
 
         private string GetNodeResult(string path)
         {
-            var response = client.GetAsync(_serveraddr + "api/node/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
+            var message = new HttpRequestMessage();
+            message.Version = HttpVersion.Version11;
+            message.Method = HttpMethod.Get;
+            message.RequestUri = new Uri(_serveraddr + "api/node/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
+            var response = client.SendAsync(message).Result;
+            //var response = client.GetAsync(_serveraddr + "api/node/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }
 
         private string GetNodeProcessedResult(string path, bool includeObjectInfo)
-        {            
-            var response = client.GetAsync(_serveraddr + "api/tree/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
+        {
+
+            var message = new HttpRequestMessage();
+            message.Version = HttpVersion.Version11;
+            message.Method = HttpMethod.Get;
+            message.RequestUri = new Uri(_serveraddr + "api/tree/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
+            var response = client.SendAsync(message).Result;
+            //var response = client.GetAsync(_serveraddr + "api/tree/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
             string json = response.Content.ReadAsStringAsync().Result;
 
             if (!includeObjectInfo)
@@ -149,10 +161,20 @@ namespace nsteam.ConfigServer.Client
             string str = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
 
             StringContent content = new System.Net.Http.StringContent(str, Encoding.UTF8, "application/json");
-            var result = client.PostAsync(_serveraddr + "api/node", content).Result;
 
-            if (result.StatusCode != System.Net.HttpStatusCode.OK)
-                throw new ApplicationException(result.Content.ReadAsStringAsync().Result);
+            var message = new HttpRequestMessage();
+            message.Version = HttpVersion.Version11;
+            message.Method = HttpMethod.Post;
+            message.Content = content;                 
+            message.RequestUri = new Uri(_serveraddr + "api/node");
+            var response = client.SendAsync(message).Result;
+
+
+
+            //var response = client.PostAsync(_serveraddr + "api/node", content).Result;
+
+            if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                throw new ApplicationException(response.Content.ReadAsStringAsync().Result);
         }
 
 
