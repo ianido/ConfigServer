@@ -143,9 +143,8 @@ namespace nsteam.ConfigServer.Types
 
         private dynamic Clone(dynamic obj)
         {
-            string json = Json.Encode(obj);
-            //return Newtonsoft.Json.JsonConvert.DeserializeObject(obj, new JsonSerializerSettings().)
-            return Json.Decode(json);
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
+            return Newtonsoft.Json.JsonConvert.DeserializeObject(json);
         }
 
         private void AddInheritedInfo(dynamic obj, string fieldname, dynamic value, string inherits, bool overrided)

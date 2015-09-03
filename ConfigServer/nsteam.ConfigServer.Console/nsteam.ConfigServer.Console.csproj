@@ -150,6 +150,9 @@
     <None Include="Examples\base.inc.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="Examples\innerarrays.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Examples\fullcomplexinheritance.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

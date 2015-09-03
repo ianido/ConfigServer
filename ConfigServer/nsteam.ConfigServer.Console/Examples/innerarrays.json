@@ -1,0 +1,23 @@
+﻿{
+  "configuration": {
+    "baseobject": {
+      "fieldObject": [
+        {
+          "name": "element1",
+          "options": [
+            {
+               "name" :  "toto1"
+            },
+            {
+               "name" :  "toto2"
+            }
+          ]
+        }
+      ]
+    },
+    "newobject": {
+      "inherits": "*configuration.baseobject"
+    }
+  }
+}
+		
