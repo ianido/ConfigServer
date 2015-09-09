@@ -22,5 +22,15 @@ namespace nsteam.ConfigServer.Provider
 
             return configuration;
         }
+
+        public static IConfigurationBuilder AddConfigServer(this IConfigurationBuilder configuration, string url, string basenode)
+        {
+            if (string.IsNullOrEmpty(url))
+                configuration.Add(new CfgConfigurationSource());
+            else
+                configuration.Add(new CfgConfigurationSource(url, basenode));
+
+            return configuration;
+        }
     }
 }

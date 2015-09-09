@@ -11,12 +11,19 @@ namespace nsteam.ConfigServer.Provider
     public class CfgConfigurationSource : ConfigurationSource
     {
         public string ServiceUrl { get; }
+        public string BaseNode { get; }
 
         public CfgConfigurationSource() : this(null){}
 
         public CfgConfigurationSource(string serviceurl)
         {
             ServiceUrl = serviceurl;
+        }
+
+        public CfgConfigurationSource(string serviceurl, string basenode)
+        {
+            ServiceUrl = serviceurl;
+            BaseNode = basenode;
         }
 
         public override void Load()
@@ -26,7 +33,10 @@ namespace nsteam.ConfigServer.Provider
             if (string.IsNullOrEmpty(ServiceUrl))
                 cfg = new ConfigService();                
             else
-                cfg = new ConfigService(ServiceUrl);
+                if (string.IsNullOrEmpty(BaseNode))
+                    cfg = new ConfigService(ServiceUrl);
+                else
+                    cfg = new ConfigService(ServiceUrl, BaseNode);
 
             dynamic obj = cfg.GetTree();
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented);
