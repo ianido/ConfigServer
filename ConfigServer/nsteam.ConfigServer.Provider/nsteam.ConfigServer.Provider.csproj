@@ -72,7 +72,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="nsteam.ConfigServer.Provider.1.0.0.nupkg" />
     <None Include="nsteam.ConfigServer.Provider.1.0.0.nuspec" />
     <None Include="packages.config" />
   </ItemGroup>
