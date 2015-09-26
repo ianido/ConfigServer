@@ -11,9 +11,8 @@ namespace nsteam.ConfigServer.Types
 {
     public class TreeController : ApiController 
     {
-        private IConfigurationService _config;
         private ILoggerService _logger;
-        private string _repofilename;
+
         private static ConfigRepository _repo = null;
 
         private ConfigRepository repo
@@ -21,32 +20,30 @@ namespace nsteam.ConfigServer.Types
             get
             {
                 if (_repo == null)
-                    _repo = new ConfigRepository(_logger, _repofilename);
+                    _repo = new ConfigRepository(_logger);
                 return _repo;
             }
         }
 
-        public TreeController(IConfigurationService config, ILoggerService logger)
+        public TreeController(ILoggerService logger)
         {
             _logger = logger;
-            _config = config;
-            _repofilename = config.GetSetting("configfile");
         }
 
         [HttpGet]
-        [Route("api/node/")]
-        public HttpResponseMessage GetNode()
+        [Route("api/{name}/node")]
+        public HttpResponseMessage GetNode(string name)
         {
-            return GetNode("/");
+            return GetNode(name, "/");
         }
 
         [HttpGet]
-        [Route("api/node/{path}")]
-        public HttpResponseMessage GetNode(string path)
+        [Route("api/{name}/node/{path}")]
+        public HttpResponseMessage GetNode(string name, string path)
         {
             try
             {
-                dynamic r = repo.GetNode(path);
+                dynamic r = repo.GetNode(name, path);
                 return Request.CreateResponse(HttpStatusCode.OK, (object)r);
             }
             catch (Exception ex)
@@ -56,12 +53,12 @@ namespace nsteam.ConfigServer.Types
         }
 
         [HttpGet]
-        [Route("api/tree/{path}")]
-        public HttpResponseMessage GetTree(string path)
+        [Route("api/{name}/tree/{path}")]
+        public HttpResponseMessage GetTree(string name, string path)
         {
             try
             {
-                dynamic r = repo.GetTree(path);
+                dynamic r = repo.GetTree(name, path);
                 return Request.CreateResponse(HttpStatusCode.OK, (object)r);
 
             }
@@ -72,19 +69,19 @@ namespace nsteam.ConfigServer.Types
         }
 
         [HttpGet]
-        [Route("api/tree/")]
-        public HttpResponseMessage GetTree()
+        [Route("api/{name}/tree")]
+        public HttpResponseMessage GetTree(string name)
         {
-            return GetTree("/");
+            return GetTree(name, "/");
         }
 
         [HttpPost]
-        [Route("api/node/")]
-        public HttpResponseMessage SetNode([FromBody]TNode node)
+        [Route("api/{name}/node")]
+        public HttpResponseMessage SetNode(string name, [FromBody]TNode node)
         {
             try
             {
-                repo.SetNode(node);
+                repo.SetNode(name, node);
                 return Request.CreateResponse(HttpStatusCode.OK);
             }
             catch (Exception ex)

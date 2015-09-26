@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 
+
 namespace nsteam.ConfigServer.Client
 {
     public class ConfigService
@@ -48,9 +49,9 @@ namespace nsteam.ConfigServer.Client
             var message = new HttpRequestMessage();
             message.Version = HttpVersion.Version11;
             message.Method = HttpMethod.Get;
-            message.RequestUri = new Uri(_serveraddr + "api/node/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
+            message.RequestUri = new Uri(_serveraddr + "node/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
             var response = client.SendAsync(message).Result;
-            //var response = client.GetAsync(_serveraddr + "api/node/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
+            //var response = client.GetAsync(_serveraddr + "node/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }
@@ -61,9 +62,9 @@ namespace nsteam.ConfigServer.Client
             var message = new HttpRequestMessage();
             message.Version = HttpVersion.Version11;
             message.Method = HttpMethod.Get;
-            message.RequestUri = new Uri(_serveraddr + "api/tree/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
+            message.RequestUri = new Uri(_serveraddr + "tree/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
             var response = client.SendAsync(message).Result;
-            //var response = client.GetAsync(_serveraddr + "api/tree/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
+            //var response = client.GetAsync(_serveraddr + "tree/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path).Result;
             string json = response.Content.ReadAsStringAsync().Result;
 
             if (!includeObjectInfo)
@@ -166,12 +167,12 @@ namespace nsteam.ConfigServer.Client
             message.Version = HttpVersion.Version11;
             message.Method = HttpMethod.Post;
             message.Content = content;                 
-            message.RequestUri = new Uri(_serveraddr + "api/node");
+            message.RequestUri = new Uri(_serveraddr + "node");
             var response = client.SendAsync(message).Result;
 
 
 
-            //var response = client.PostAsync(_serveraddr + "api/node", content).Result;
+            //var response = client.PostAsync(_serveraddr + "node", content).Result;
 
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
                 throw new ApplicationException(response.Content.ReadAsStringAsync().Result);
