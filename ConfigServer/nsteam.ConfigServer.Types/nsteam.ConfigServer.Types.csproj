@@ -133,6 +133,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AuthRepository.cs" />
+    <Compile Include="ConfigWatcher.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Extensions.cs" />
     <Compile Include="CustomXMLFormatter.cs" />
     <Compile Include="IdentityUser.cs" />

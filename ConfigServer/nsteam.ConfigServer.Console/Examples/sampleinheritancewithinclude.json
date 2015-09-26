@@ -1,6 +1,6 @@
 ﻿{
   "configuration": {
-    "basefile": "=base.json",    
+    "basefile": "*base.json",    
     "baseobject": {
       "inherits": "*configuration.basefile.base",
       "field0": "value0X",

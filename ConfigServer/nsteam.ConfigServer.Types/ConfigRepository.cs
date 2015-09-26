@@ -25,24 +25,25 @@ namespace nsteam.ConfigServer.Types
 
         private int NumberofChanges = 0;
         private ILoggerService _logger;
-        private string _filename = "";
+        private List<string> _filename = new List<string>();
+
         private int MaxRecursiveProcessing = 5;
         private bool fullStoryObjectInfo = false;
         private static object objlock = new object();
-        private FileSystemWatcher watcher = new FileSystemWatcher();
+        private ConfigWatcher watcher = new ConfigWatcher();
 
         #region Support Methods
 
         private void LoadDocument()
         {
-            watcher.EnableRaisingEvents = false;
+            watcher.StopMonitoring();
             _logger.Log("Loading configuration...", EventType.Info);
-            if (Path.GetExtension(_filename) == ".json")
+            if (Path.GetExtension(_filename[0]) == ".json")
             {
                 lock (objlock)
                 {
                     var jsonContent = string.Empty;
-                    TryerHelper.Try(delegate { jsonContent = File.ReadAllText(_filename); }).Retry(5).RetryInterval(1000).IgnoreException(typeof(IOException)).Execute();
+                    TryerHelper.Try(delegate { jsonContent = File.ReadAllText(_filename[0]); }).Retry(5).RetryInterval(1000).IgnoreException(typeof(IOException)).Execute();
                     jsonContent = Regex.Replace(jsonContent, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes                        
                     _root = JsonConvert.DeserializeXmlNode(jsonContent.Replace(@"\",@"\\"), null, true);
                 }
@@ -52,7 +53,7 @@ namespace nsteam.ConfigServer.Types
                 lock (objlock)
                 {
                     _root = new XmlDocument();
-                    _root.Load(_filename);
+                    _root.Load(_filename[0]);
                 }
             }
 
@@ -63,8 +64,10 @@ namespace nsteam.ConfigServer.Types
                 json = Regex.Replace(json, "(?<=\")(@)(?!.*\":\\s )", string.Empty, RegexOptions.IgnoreCase); //Remove "@" from attributes
                 dynamic obj = Json.Decode(json);
 
-                ProcessReferences(_root, obj, MaxRecursiveProcessing);
-                ProcessInheritances(_root, obj, MaxRecursiveProcessing);
+                var _roofr = _root;
+
+                ProcessReferences(ref _roofr, obj, obj, MaxRecursiveProcessing);
+                ProcessInheritances(ref _roofr, obj, obj, MaxRecursiveProcessing);
 
                 string new_json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
 
@@ -72,7 +75,7 @@ namespace nsteam.ConfigServer.Types
                 _root_with_references = Newtonsoft.Json.JsonConvert.DeserializeXmlNode(new_json, null, true);
             }
             _logger.Log("Configuration loaded.", EventType.Info);
-            watcher.EnableRaisingEvents = true;
+            watcher.StartMonitoring();
         }
         
         private XmlDocument _repo
@@ -95,27 +98,8 @@ namespace nsteam.ConfigServer.Types
             }
         }
 
-        private void CreateFileWatcher(string path, string filename)
-        {
-           
-            watcher.Path = path;
-
-            /* Watch for changes in LastAccess and LastWrite times, and 
-               the renaming of files or directories. */
-            watcher.NotifyFilter = NotifyFilters.LastWrite;
-
-            // Only watch text files.
-            watcher.Filter = filename;
-
-            // Add event handlers.
-            watcher.Changed += new FileSystemEventHandler(OnChanged);
-
-            // Begin watching.
-            watcher.EnableRaisingEvents = false;
-        }
-
         // Define the event handlers.
-        private void OnChanged(object source, FileSystemEventArgs e)
+        private void OnConfigurationChanged(object source, FileSystemEventArgs e)
         {            
             lock (objlock)
             {
@@ -143,8 +127,8 @@ namespace nsteam.ConfigServer.Types
 
         private dynamic Clone(dynamic obj)
         {
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
-            return Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+            string json = Json.Encode(obj);
+            return Json.Decode(json);
         }
 
         private void AddInheritedInfo(dynamic obj, string fieldname, dynamic value, string inherits, bool overrided)
@@ -276,7 +260,7 @@ namespace nsteam.ConfigServer.Types
             }
         }
 
-        private void ProcessInheritances(XmlDocument target, dynamic obj, int recursivelyMax)
+        private void ProcessInheritances(ref XmlDocument target, dynamic rootobj, dynamic obj, int recursivelyMax)
         {
             if (recursivelyMax == 0) return;
             if (obj is DynamicJsonObject)
@@ -288,12 +272,12 @@ namespace nsteam.ConfigServer.Types
                     IEnumerable<string> propertyNames = obj.GetDynamicMemberNames();
                     foreach (string prop in propertyNames)
                     {
-                        if (obj[prop] is DynamicJsonObject) ProcessInheritances(target, obj[prop], recursivelyMax - 1);
+                        if (obj[prop] is DynamicJsonObject) ProcessInheritances(ref target, rootobj, obj[prop], recursivelyMax - 1);
                         else if (obj[prop] is DynamicJsonArray)
                         {
                             foreach (var elem in obj[prop])
                             {
-                                ProcessInheritances(target, elem, recursivelyMax - 1);
+                                ProcessInheritances(ref target, rootobj, elem, recursivelyMax - 1);
                             }
                         }
                         else if (obj[prop] is string)
@@ -321,7 +305,7 @@ namespace nsteam.ConfigServer.Types
 
         }
 
-        private void ProcessReferences(XmlDocument target, dynamic obj, int recursivelyMax)
+        private void ProcessReferences(ref XmlDocument target, dynamic rootobj, dynamic obj, int recursivelyMax)
         {
             if (recursivelyMax == 0) return;
             if (obj is DynamicJsonObject)
@@ -337,20 +321,67 @@ namespace nsteam.ConfigServer.Types
                         {
                             foreach (var elem in obj[prop])
                             {
-                                ProcessReferences(target, elem, recursivelyMax - 1);
+                                ProcessReferences(ref target, rootobj, elem, recursivelyMax - 1);
                             }
                         } 
-                        else if (obj[prop] is DynamicJsonObject) ProcessReferences(target, obj[prop], recursivelyMax - 1);
+                        else if (obj[prop] is DynamicJsonObject) ProcessReferences(ref target, rootobj, obj[prop], recursivelyMax - 1);
                         
                         else if (obj[prop] is string)
                         {
                             string refId = obj[prop];
-                            if (refId.StartsWith("*") && (prop != "inherits"))
+                            if (refId.StartsWith("*") && (prop.StartsWith("include")))
+                            {
+                                // Attempt to load a file
+                                var filepath = refId.Substring(1);
+                                if ((!filepath.Contains(":")))
+                                    filepath = Path.Combine(Path.GetDirectoryName(_filename[0]), filepath);
+
+                                string jsonContent = File.ReadAllText(filepath);
+
+                                jsonContent = Regex.Replace(jsonContent, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes                        
+                                XmlDocument _rootobj = JsonConvert.DeserializeXmlNode(jsonContent.Replace(@"\", @"\\"), null, true);
+                                string json = Newtonsoft.Json.JsonConvert.SerializeXmlNode(_rootobj.ChildNodes[0], Newtonsoft.Json.Formatting.None);
+                                json = Regex.Replace(json, "(?<=\")(@)(?!.*\":\\s )", string.Empty, RegexOptions.IgnoreCase); //Remove "@" from attributes
+
+                                dynamic newobj = Json.Decode(json);
+                                MergeObjects(obj, newobj, refId);
+                                RemoveMember(obj, prop);
+                                
+                                string json_target = Json.Encode(rootobj);
+
+                                // Remove objectinfo from the "json_target"
+                                json_target = Regex.Replace(json_target, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes                        
+                                target = JsonConvert.DeserializeXmlNode(json_target.Replace(@"\", @"\\"), null, true);
+
+                                modified = true;
+                                break;
+                            }
+                            else
+                            if (refId.StartsWith("*") && (prop != "inherits") && (!prop.StartsWith("include")))
                             {
                                 try
                                 {
                                     dynamic newobj = InternalGetNodes(target, refId.Substring(1), recursivelyMax - 1);
+                                    if (newobj == null)
+                                    {
+                                        // Attempt to load a file
+                                        var filepath = refId.Substring(1);
+                                        if ((!filepath.Contains(":")))
+                                            filepath = Path.Combine(Path.GetDirectoryName(_filename[0]), filepath);
+
+                                        string jsonContent = File.ReadAllText(filepath);
+
+                                        jsonContent = Regex.Replace(jsonContent, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes                        
+                                        XmlDocument _rootobj = JsonConvert.DeserializeXmlNode(jsonContent.Replace(@"\", @"\\"), null, true);
+                                        string json = Newtonsoft.Json.JsonConvert.SerializeXmlNode(_rootobj.ChildNodes[0], Newtonsoft.Json.Formatting.None);
+                                        json = Regex.Replace(json, "(?<=\")(@)(?!.*\":\\s )", string.Empty, RegexOptions.IgnoreCase); //Remove "@" from attributes
+                                        newobj = Json.Decode(json);
+                                    }
                                     obj[prop] = newobj;
+                                    string json_target = Json.Encode(rootobj);
+                                    json_target = Regex.Replace(json_target, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes                        
+                                    target = JsonConvert.DeserializeXmlNode(json_target.Replace(@"\", @"\\"), null, true);
+
                                     AddReferencedInfo(obj, prop, refId);
                                     modified = true;
                                     break;
@@ -408,10 +439,10 @@ namespace nsteam.ConfigServer.Types
             if (recursivelyReferencesMax > 0)
             {
                 foreach (var elem in list)
-                    ProcessReferences(target, elem, recursivelyReferencesMax);
+                    ProcessReferences(ref target, elem, elem, recursivelyReferencesMax);
 
                 foreach (var elem in list)
-                    ProcessInheritances(target, elem, recursivelyReferencesMax);
+                    ProcessInheritances(ref target, elem, elem, recursivelyReferencesMax);
             }
 
             if ((list.Count > 1) || (isArrayType))
@@ -429,8 +460,8 @@ namespace nsteam.ConfigServer.Types
             if ((!filename.Contains(":")))
                 filename = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), filename);
 
-            _filename = filename;
-            CreateFileWatcher(Path.GetDirectoryName(_filename), Path.GetFileName(_filename));
+            _filename.Add(filename);
+            watcher.AddGroupWatcher(Path.GetFileName(filename), new string[1] { filename });
         }
 
         public dynamic GetTree(string path)
@@ -499,16 +530,16 @@ namespace nsteam.ConfigServer.Types
                 }
                 try
                 {
-                    watcher.EnableRaisingEvents = false;
+                    watcher.StopMonitoring();
                     CreateBackup();
                     SaveConfig();
                     _root = null;
                     LoadDocument();
-                    watcher.EnableRaisingEvents = true;
+                    watcher.StartMonitoring();
                 }
                 catch (Exception ex)
                 {
-                    watcher.EnableRaisingEvents = true;
+                    watcher.StopMonitoring();
                     throw ex;
                 }
             }
@@ -517,23 +548,23 @@ namespace nsteam.ConfigServer.Types
         public string CreateBackup()
         {
 
-            string newfilename = Path.Combine(Path.GetDirectoryName(_filename), Path.GetFileNameWithoutExtension(_filename) + DateTime.Now.ToString("yyyy-MM-dd hh-mm-ss.ffff") + Path.GetExtension(_filename));
+            string newfilename = Path.Combine(Path.GetDirectoryName(_filename[0]), Path.GetFileNameWithoutExtension(_filename[0]) + DateTime.Now.ToString("yyyy-MM-dd hh-mm-ss.ffff") + Path.GetExtension(_filename[0]));
             _logger.Log("Create backup: " + Path.GetFileName(newfilename), EventType.Warn);
-            File.Copy(_filename, newfilename);
+            File.Copy(_filename[0], newfilename);
             return newfilename;
         }
 
         public void SaveConfig()
         {
-            if (Path.GetExtension(_filename) == ".json")
+            if (Path.GetExtension(_filename[0]) == ".json")
             {
                 string json = Newtonsoft.Json.JsonConvert.SerializeXmlNode(_repo, Newtonsoft.Json.Formatting.Indented);
                 json = Regex.Replace(json, "(?<=\")(@)(?!.*\":\\s )", string.Empty, RegexOptions.IgnoreCase); //Remove "@" from attributes
                 _logger.Log("Saving config... ", EventType.Warn);
-                File.WriteAllText(_filename, json);
+                File.WriteAllText(_filename[0], json);
             }
             else
-                _repo.Save(_filename);
+                _repo.Save(_filename[0]);
         }
         
     }

@@ -1,6 +1,6 @@
 ﻿{
   "configuration": {
-    "includefile" : "base.json",
+    "include" : "*base.json",
     "baseobject": {
       "inherits": "*configuration.base",
       "field0": "value0X",
