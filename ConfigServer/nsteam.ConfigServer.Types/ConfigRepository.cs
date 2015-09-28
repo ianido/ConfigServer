@@ -105,8 +105,10 @@ namespace nsteam.ConfigServer.Types
 
                         var _roofr = _sources[source.name].Root;
 
-                        ProcessReferences(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
                         ProcessInheritances(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
+
+                        ProcessReferences(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
+                        
 
                         string new_json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
 
@@ -419,8 +421,9 @@ namespace nsteam.ConfigServer.Types
 
                                         watcher.AddToGroupWatcher(name, filepath);
 
-                                        newobj = Json.Decode(jsonContent);
+                                        newobj = Json.Decode(jsonContent);                                        
                                     }
+
                                     obj[prop] = newobj;
 
                                     target = Extensions.CreateXMLDocument(rootobj);
@@ -482,11 +485,12 @@ namespace nsteam.ConfigServer.Types
 
             if (recursivelyReferencesMax > 0)
             {
-                foreach (var elem in list)
-                    ProcessReferences(name, ref target, elem, elem, recursivelyReferencesMax);
-
+                
                 foreach (var elem in list)
                     ProcessInheritances(name, ref target, elem, elem, recursivelyReferencesMax);
+
+                foreach (var elem in list)
+                    ProcessReferences(name, ref target, elem, elem, recursivelyReferencesMax);
             }
 
             if ((list.Count > 1) || (isArrayType))
