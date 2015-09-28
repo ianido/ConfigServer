@@ -186,6 +186,9 @@
     <None Include="Examples\master.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="MasterCRM\config.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="MasterCRM\master.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

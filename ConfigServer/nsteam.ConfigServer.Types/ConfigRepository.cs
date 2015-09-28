@@ -45,7 +45,7 @@ namespace nsteam.ConfigServer.Types
             {
                 if (groupName != null)
                 {
-                    if (source.name != groupName) continue;
+                    if (source.name.ToUpper() != groupName.ToUpper()) continue;
                 }
 
 

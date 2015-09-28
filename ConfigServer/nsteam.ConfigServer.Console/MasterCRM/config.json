@@ -1,0 +1,345 @@
+﻿{
+	"configuration": {
+		"global": {
+			"MailServer": "mail.amadeus.com",
+			"Welcome": "Welcome to config Server"
+		},
+		"base": {
+			"Categories": [
+				{
+					"name": "MENU",
+					"options": [
+						{
+							"name": "Dashboard",
+							"url": "Dashboard",
+							"roles": "Agent",
+							"icon": "ti-home"
+						},
+						{
+							"name": "Customers",
+							"url": "Customers",
+							"roles": "Agent",
+							"icon": "ti-layout-media-overlay-alt-2",
+							"options": [
+								{
+									"name": "View/Search Customers",
+									"url": "Search"
+								},
+								{
+									"name": "Add New Customer",
+									"url": "Add"
+								},
+								{
+									"name": "Customer Notes",
+									"url": "Notes"
+								},
+								{
+									"name": "Calendar",
+									"url": "Calendar"
+								}
+							]
+						},
+						{
+							"name": "Orders",
+							"url": "Orders",
+							"roles": "Agent",
+							"icon": "ti-support",
+							"options": [
+								{
+									"name": "All Orders",
+									"url": "AllOrders"
+								},
+								{
+									"name": "- Today Orders",
+									"url": "TodayOrders"
+								},
+								{
+									"name": "- Calendar",
+									"url": "Calendar"
+								},
+								{
+									"name": "Suscriptions",
+									"url": "Suscriptions"
+								}
+							]
+						},
+						{
+							"name": "Billing",
+							"url": "Billing",
+							"roles": "Admin, Billing",
+							"icon": "ti-folder",
+							"options": [
+								{
+									"name": "Transaction List",
+									"url": "Transactions"
+								},
+								{
+									"name": "Invoices",
+									"url": "Invoices",
+									"options": [
+										{
+											"name": "- Paid",
+											"url": "Paid"
+										},
+										{
+											"name": "- Unpaid",
+											"url": "Unpaid"
+										},
+										{
+											"name": "- Overdue",
+											"url": "Overdue"
+										},
+										{
+											"name": "- Cancelled",
+											"url": "Cancelled"
+										},
+										{
+											"name": "- Refunded",
+											"url": "Refunded"
+										},
+										{
+											"name": "- Collection",
+											"url": "Collection"
+										}
+									]
+								},
+								{
+									"name": "Quotes",
+									"url": "Calendar",
+									"options": [
+										{
+											"name": "- Valid",
+											"url": "Valid"
+										},
+										{
+											"name": "- Expired",
+											"url": "Expired"
+										},
+										{
+											"name": "- New Quote",
+											"url": "New"
+										}
+									]
+								},
+								{
+									"name": "Offline Payments",
+									"url": "Payments"
+								},
+								{
+									"name": "Gateway Log",
+									"url": "GatewayLog"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "MORE",
+					"options": [
+						{
+							"name": "Administrator",
+							"url": "Admin",
+							"roles": "Admin",
+							"icon": "ti-window",
+							"options": [
+								{
+									"name": "Basic Catalogs",
+									"url": "Catalogs"
+								},
+								{
+									"name": "Menus",
+									"url": "Menus"
+								},
+								{
+									"name": "Dishes",
+									"url": "Dishes"
+								},
+								{
+									"name": "Ingredients",
+									"url": "Ingredients"
+								},
+								{
+									"name": "Drivers",
+									"url": "Drivers"
+								},
+								{
+									"name": "Routes",
+									"url": "Routes"
+								}
+							]
+						},
+						{
+							"name": "Reports",
+							"url": "Reports",
+							"roles": "Agent",
+							"icon": "ti-layers",
+							"options": [
+								{
+									"name": "Daily New Customers",
+									"url": "DailyNew"
+								},
+								{
+									"name": "Inactive Customers",
+									"url": "InactiveCustomers"
+								},
+								{
+									"name": "News vs Cancelled",
+									"url": "NewsVsCancelled"
+								},
+								{
+									"name": "Daily Delivery",
+									"url": "DailyDelivery"
+								},
+								{
+									"name": "Transactions",
+									"url": "Transactions"
+								},
+								{
+									"name": "Cancellations",
+									"url": "Cancellations"
+								},
+								{
+									"name": "Drivers & Routes",
+									"url": "",
+									"options": [
+										{
+											"name": "- Driver delivery",
+											"url": "DriverDelivery"
+										},
+										{
+											"name": "- Delivery summary",
+											"url": "DeliverySummary"
+										},
+										{
+											"name": "- Driver's payment",
+											"url": "DriverPayment"
+										}
+									]
+								},
+								{
+									"name": "Kitchen",
+									"url": "",
+									"options": [
+										{
+											"name": "- Kitchen Summary",
+											"url": "KitchenSummary"
+										},
+										{
+											"name": "- Exceptions",
+											"url": "Exceptions"
+										},
+										{
+											"name": "- Additional Dishes",
+											"url": "AdditionalDishes"
+										},
+										{
+											"name": "- Receipts",
+											"url": "Receipts"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "Security",
+							"url": "Security",
+							"roles": "Admin",
+							"icon": "ti-layout",
+							"options": [
+								{
+									"name": "Users",
+									"url": "Users"
+								},
+								{
+									"name": "Roles",
+									"url": "Roles"
+								},
+								{
+									"name": "Access",
+									"url": "Access"
+								},
+								{
+									"name": "Policies",
+									"url": "Policies"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "LABELS",
+					"options": [
+						{
+							"name": "My Orders",
+							"url": "Orders/MyOrders",
+							"roles": "Agent",
+							"icon": "ti-control-record text-warning"
+						},
+						{
+							"name": "My Customers",
+							"url": "Customers/MyCustomers",
+							"roles": "Agent",
+							"icon": "ti-control-record text-success"
+						},
+						{
+							"name": "Support",
+							"url": "Support",
+							"roles": "Admin",
+							"icon": "ti-control-record text-danger"
+						}
+					]
+				}
+			],
+			"defaultEnviroment": {
+				"name": "Default",
+				"MainMenu": "*configuration.base.Categories",
+        "Messaging": {
+          "PreferedEmailService": "SMTP",
+          "PreferedSMSService" : "Twilio",
+          "SMTP": {
+            "FromAddress": "website@yupisoft.com",
+            "FromName": "Kitchen Ready",
+            "SMTPServer": "mail.yupisoft.com",
+            "SMTPServerPort": "587",
+            "SMTPServerSecure": "false",
+            "Username": "website@yupisoft.com",
+            "Password": "we2015"
+          },
+          "SendGrid": {
+            "FromAddress": "website@yupisoft.com",
+            "FromName": "Kitchen Ready",
+            "ApiKey": "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"
+          },
+          "Twilio": {
+            "FromNumber": "+17862922254",
+            "AccountSID": "AC193e24d1b6272b2973ddf030324a21f7",
+            "Token": "fbac7a6423e8ccf4e2bab2addfe46c31"
+          }
+        },
+        "CacheRedis": {
+          "Configuration": "localhost",
+          "InstanceName": "nsCrm.Web"
+        },
+        "Database": {
+          "connectionString": "Server=nearsolutions.net;Database=2_nsCRM_dev;User Id=2_ns_CRM;Password=ns2015;MultipleActiveResultSets=true",
+          "providerName": "System.Data.SqlClient"
+        }
+      }
+		},
+		"enviroments": [
+			{
+				"inherits": "*configuration.base.defaultEnviroment",
+				"name": "Dev"
+			},
+			{
+				"inherits": "*configuration.base.defaultEnviroment",
+				"name": "Test"
+			},
+			{
+				"inherits": "*configuration.base.defaultEnviroment",
+				"name": "Production"
+			}
+		]
+	}
+}
+		
