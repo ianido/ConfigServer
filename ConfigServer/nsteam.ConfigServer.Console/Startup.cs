@@ -34,7 +34,7 @@ namespace nsteam.ConfigServer.Types
 
 
             HttpClient client = new HttpClient();
-            var response = client.GetAsync(baseAddress + "api/node/" + cfg.Sources[0].name).Result;
+            var response = client.GetAsync(baseAddress + "api/" + cfg.Sources[0].name + "/node/" ).Result;
         }
 
         public static void CloseServer()

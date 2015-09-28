@@ -40,7 +40,7 @@ namespace nsteam.ConfigServer.Types
             watcher.StopMonitoring();
             _logger.Log("Loading configuration...", EventType.Info);
             var cfg = new ConfigSettings();
-            
+
             foreach (var source in cfg.SourceElements)
             {
                 if (groupName != null)
@@ -53,57 +53,75 @@ namespace nsteam.ConfigServer.Types
                 if ((!filename.Contains(":")))
                     filename = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), filename);
 
+                
 
-                watcher.RemoveGroupWatcher(groupName);
-
-                if (!_sources.ContainsKey(source.name))
+                try
                 {
-                    _sources.Add(source.name, new ConfigEntity());
-                    _sources[source.name].FileName = filename;
-                    _sources[source.name].GroupName = source.name;
-                }
+                    if (!File.Exists(filename))
+                    {
+                        _logger.Log("Can't find source: " + filename, EventType.Fatal);
+                        return;
+                    }
+                    else
+                    {
+                        _logger.Log("Source: " + filename, EventType.Info);
+                    }
+                    watcher.RemoveGroupWatcher(groupName);
 
-                if (Path.GetExtension(source.file) == ".json")
-                {
+                    if (!_sources.ContainsKey(source.name))
+                    {
+                        _sources.Add(source.name, new ConfigEntity());
+                        _sources[source.name].FileName = filename;
+                        _sources[source.name].GroupName = source.name;
+                    }
+
+                    if (Path.GetExtension(filename) == ".json")
+                    {
+                        lock (objlock)
+                        {
+                            var jsonContent = string.Empty;
+                            TryerHelper.Try(delegate { jsonContent = File.ReadAllText(filename); }).Retry(5).RetryInterval(1000).IgnoreException(typeof(IOException)).Execute();
+                            jsonContent = Regex.Replace(jsonContent, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes                        
+                            _sources[source.name].Root = JsonConvert.DeserializeXmlNode(jsonContent.Replace(@"\", @"\\"), null, true);
+                        }
+                    }
+                    else
+                    {
+                        lock (objlock)
+                        {
+                            _sources[source.name].Root = new XmlDocument();
+                            _sources[source.name].Root.Load(filename);
+                        }
+                    }
+
+                    watcher.AddToGroupWatcher(groupName, filename);
+
+                    // Preprocess Tree References and Inheritances
                     lock (objlock)
                     {
-                        var jsonContent = string.Empty;
-                        TryerHelper.Try(delegate { jsonContent = File.ReadAllText(source.file); }).Retry(5).RetryInterval(1000).IgnoreException(typeof(IOException)).Execute();
-                        jsonContent = Regex.Replace(jsonContent, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes                        
-                        _sources[source.name].Root = JsonConvert.DeserializeXmlNode(jsonContent.Replace(@"\", @"\\"), null, true);
+                        string json = Newtonsoft.Json.JsonConvert.SerializeXmlNode(_sources[source.name].Root.ChildNodes[0], Newtonsoft.Json.Formatting.None);
+                        json = Regex.Replace(json, "(?<=\")(@)(?!.*\":\\s )", string.Empty, RegexOptions.IgnoreCase); //Remove "@" from attributes
+                        dynamic obj = Json.Decode(json);
+
+                        var _roofr = _sources[source.name].Root;
+
+                        ProcessReferences(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
+                        ProcessInheritances(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
+
+                        string new_json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
+
+                        new_json = Regex.Replace(new_json, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes
+                        _sources[source.name].RootReferences = Newtonsoft.Json.JsonConvert.DeserializeXmlNode(new_json, null, true);
                     }
+                    _logger.Log("Configuration loaded.", EventType.Info);
                 }
-                else
+                
+                catch (Exception ex)
                 {
-                    lock (objlock)
-                    {
-                        _sources[source.name].Root = new XmlDocument();
-                        _sources[source.name].Root.Load(source.file);
-                    }
-                }
-
-                watcher.AddToGroupWatcher(groupName, filename);
-
-                // Preprocess Tree References and Inheritances
-                lock (objlock)
-                {
-                    string json = Newtonsoft.Json.JsonConvert.SerializeXmlNode(_sources[source.name].Root.ChildNodes[0], Newtonsoft.Json.Formatting.None);
-                    json = Regex.Replace(json, "(?<=\")(@)(?!.*\":\\s )", string.Empty, RegexOptions.IgnoreCase); //Remove "@" from attributes
-                    dynamic obj = Json.Decode(json);
-
-                    var _roofr = _sources[source.name].Root;
-
-                    ProcessReferences(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
-                    ProcessInheritances(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
-
-                    string new_json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
-
-                    new_json = Regex.Replace(new_json, @"("")(\w+)(""\s*)(:)(\s*"")", "$1@$2$3$4$5"); // Generate attributes based on single nodes
-                    _sources[source.name].RootReferences = Newtonsoft.Json.JsonConvert.DeserializeXmlNode(new_json, null, true);
-                }
+                    _logger.Log("Configuration failed>" + ex.ToString(), EventType.Error);
+                }                
             }
-            
-            _logger.Log("Configuration loaded.", EventType.Info);
+
             watcher.StartMonitoring();
         }
         
