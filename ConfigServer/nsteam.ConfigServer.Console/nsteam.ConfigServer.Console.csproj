@@ -189,6 +189,9 @@
     <None Include="nsCRM\config.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="nsCRM\configsimple.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="MasterCRM\master.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

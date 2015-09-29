@@ -24,7 +24,7 @@ namespace nsteam.ConfigServer.Types
 
         private int NumberofChanges = 0;
         private ILoggerService _logger;
-
+        private dynamic _mainroot = null;
 
         private int MaxRecursiveProcessing = 5;
         private bool fullStoryObjectInfo = false;
@@ -101,14 +101,17 @@ namespace nsteam.ConfigServer.Types
                     {
                         string json = Newtonsoft.Json.JsonConvert.SerializeXmlNode(_sources[source.name].Root.ChildNodes[0], Newtonsoft.Json.Formatting.None);
                         json = Regex.Replace(json, "(?<=\")(@)(?!.*\":\\s )", string.Empty, RegexOptions.IgnoreCase); //Remove "@" from attributes
-                        dynamic obj = Json.Decode(json);
+                        dynamic obj = _mainroot = Json.Decode(json);
 
                         var _roofr = _sources[source.name].Root;
 
-                        ProcessInheritances(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
-
-                        ProcessReferences(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
                         
+                        ProcessReferences(source.name, ref _roofr, _mainroot, obj, MaxRecursiveProcessing);
+
+                        ProcessInheritances(source.name, ref _roofr, _mainroot, obj, MaxRecursiveProcessing);
+
+                        //ProcessReferences(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
+
 
                         string new_json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
 
@@ -171,8 +174,11 @@ namespace nsteam.ConfigServer.Types
 
         private dynamic Clone(dynamic obj)
         {
-            string json = Json.Encode(obj);
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
             return Json.Decode(json);
+            //return Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+            //string json = Json.Encode(obj);
+            //return Json.Decode(json);
         }
 
         private void AddInheritedInfo(dynamic obj, string fieldname, dynamic value, string inherits, bool overrided)
@@ -368,7 +374,8 @@ namespace nsteam.ConfigServer.Types
                                 ProcessReferences(name, ref target, rootobj, elem, recursivelyMax - 1);
                             }
                         } 
-                        else if (obj[prop] is DynamicJsonObject) ProcessReferences(name, ref target, rootobj, obj[prop], recursivelyMax - 1);
+                        else if (obj[prop] is DynamicJsonObject)
+                            ProcessReferences(name, ref target, rootobj, obj[prop], recursivelyMax - 1);
                         
                         else if (obj[prop] is string)
                         {
@@ -389,7 +396,9 @@ namespace nsteam.ConfigServer.Types
                                     MergeObjects(obj, newobj, refId);
                                     RemoveMember(obj, prop);
 
-                                    string json_target = Json.Encode(rootobj);
+                                    //string json_target = Json.Encode(rootobj);
+
+                                    string json_target = Newtonsoft.Json.JsonConvert.SerializeObject(rootobj);
 
                                     json_target = json_target.RemoveObjectInfo();
 
@@ -485,12 +494,11 @@ namespace nsteam.ConfigServer.Types
 
             if (recursivelyReferencesMax > 0)
             {
-                
                 foreach (var elem in list)
-                    ProcessInheritances(name, ref target, elem, elem, recursivelyReferencesMax);
+                    ProcessReferences(name, ref target, _mainroot, elem, recursivelyReferencesMax);
 
                 foreach (var elem in list)
-                    ProcessReferences(name, ref target, elem, elem, recursivelyReferencesMax);
+                    ProcessInheritances(name, ref target, _mainroot, elem, recursivelyReferencesMax);
             }
 
             if ((list.Count > 1) || (isArrayType))

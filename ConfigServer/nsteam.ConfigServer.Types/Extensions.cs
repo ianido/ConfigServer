@@ -50,7 +50,8 @@ namespace nsteam.ConfigServer.Types
 
         public static XmlDocument CreateXMLDocument(dynamic rootobj)
         {
-            string json_target = Json.Encode(rootobj);
+            //string json_target = Json.Encode(rootobj);
+            string json_target = JsonConvert.SerializeObject(rootobj);
             var target = json_target.CreateXMLDocument();
             return target;
         }

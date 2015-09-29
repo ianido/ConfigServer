@@ -1,0 +1,28 @@
+﻿{
+	"configuration": {		
+		"bse": {
+			"Categories": [
+				{
+					"name": "MENU",
+					"options": [
+						{
+              "name": "Dashboard",
+              "title": "Dashboard"
+						}
+					]
+				}				
+			],
+			"defaultEnviroment": {
+				"name": "Default",
+				"MainMenu": "*configuration.bse.Categories"        
+      }
+		},
+		"enviroments": [
+			{
+				"inherits": "*configuration.bse.defaultEnviroment",
+				"name": "Dev"
+			}			
+		]
+	}
+}
+		
