@@ -47,7 +47,7 @@ Lets suppose our config file is: config.json and contain
 ```
 Now how can I access to all those values?
 
-Ok first lets use a client tool for connecting to the ConfigServer and setup in our traditional config file the endpoint connection:
+Ok first lets use a client library (not required) for connecting to the ConfigServer and setup in our traditional config file the endpoint connection:
 
 web.config or app.config
 ```
