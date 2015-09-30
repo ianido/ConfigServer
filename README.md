@@ -224,7 +224,7 @@ file master.json
 #!json
 {
     "configuration": {
-      "include" : "global.json",
+      "include" : "*global.json",
       "applications": [
        {
            "inherits" : "*configuration.defaultApplication",
