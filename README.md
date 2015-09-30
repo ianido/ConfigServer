@@ -145,7 +145,7 @@ dynamic apps = srv.GetTree("applications");
 var address = apps[0].address; 
 ```
 
-Ok, I dont like numeric indexes, I want to refer to the item with a "Name" Lets grab the "address" from my item named: "LogServer" does not matter where position is in the array.
+Ok, I dont like numeric indexes, I want to refer to the item with a "Name" Lets grab the "address" from my item named: "LogServer" does not matter where position is in the array. *It is mandatory that every element in the array contains the field: "name"*
 
 ```
 #!c#
