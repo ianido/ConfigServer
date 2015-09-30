@@ -290,16 +290,13 @@ http://localhost:9000/api/CRMCustomer
 ```
 
 * Install as a service:
-
 ```
 #!batch
-
 nsteam.ConfigServer.exe -i
 ```
 
 * Run as a console:
+```
 #!batch
-
 nsteam.ConfigServer.exe -console
 ```
-
