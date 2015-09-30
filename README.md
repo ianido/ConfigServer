@@ -227,13 +227,13 @@ file master.json
       "include" : "global.json",
       "applications": [
        {
-           "inherits" : "@configuration.defaultApplication",
+           "inherits" : "*configuration.defaultApplication",
            "name" : "LogServer", 
            "address": "127.0.0.1",
-           "TimeOut" : "@configuration.global.ResponseTimeOut"
+           "TimeOut" : "*configuration.global.ResponseTimeOut"
        },
        {
-            "inherits" : "@configuration.defaultApplication",
+            "inherits" : "*configuration.defaultApplication",
             "name" : "CommonData",
             "port ": "1010", 
             "url": "http://127.0.0.1/Common"
