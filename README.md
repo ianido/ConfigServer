@@ -182,6 +182,8 @@ Just add '*' at the front of the value and set the element you want to reference
 Now configuration.applications[0].TimeOut contains 180 (referenced from configuration.global.ResponseTimeOut)
 
 ###Inheritance! We need to inherits some fields for override and/or add some others fields###
+just need to use the reserved word "inherited" and specify which class you want to inherits
+
 ```
 #!json
 {
@@ -196,13 +198,13 @@ Now configuration.applications[0].TimeOut contains 180 (referenced from configur
       },
       "applications": [
        {
-           "inherits" : "@configuration.defaultApplication",
+           "inherits" : "*configuration.defaultApplication",
            "name" : "LogServer", 
            "address": "127.0.0.1",
-           "TimeOut" : "@configuration.global.ResponseTimeOut"
+           "TimeOut" : "*configuration.global.ResponseTimeOut"
        },
        {
-            "inherits" : "@configuration.defaultApplication",
+            "inherits" : "*configuration.defaultApplication",
             "name" : "CommonData",
             "port ": "1010", 
             "url": "http://127.0.0.1/Common"
@@ -215,6 +217,7 @@ Previous example every item of the array **applications** inherited fields and v
 ### More advanced features: Include external files ###
 
 You may want to have different files in order to maintain isolated some portions of your configuration.
+just need to use the reserved word "include" and specify which file you want to include.
 
 file master.json
 ```
