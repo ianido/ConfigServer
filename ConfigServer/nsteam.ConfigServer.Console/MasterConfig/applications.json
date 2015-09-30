@@ -1,0 +1,296 @@
+﻿{
+      "applications": [
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "AWSRequestManagerV3",
+          "TestKey": "",
+          "PNRQueueDaysBefore": "",
+          "DBConnectionString": "",
+          "LogSessionQueues": "",
+          "StandardPort": ""
+        },
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "AuthProcessorServices",
+          "DefaultConnectionLimit": "",
+          "MessageTypeIdx_SynchronizeReservation": "",
+          "MessageTypeIdx_BadTokenRequest": "",
+          "MessageTypeIdx_RejectedSynchronizeRequest": "",
+          "MessageTypeIdx_TokenRequest": "",
+          "AllowedServices": ""
+        },
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "DataTierBridge"
+        },
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "eSeaAirticketingSearchRobot",
+          "RecordCountToProcess": "",
+          "DefaultLogRetention_Error": "",
+          "ProcessorLocation": "",
+          "ConfiguredAccounts": "",
+          "TimerInterval": "",
+          "ConfigUpdateInterval": "",
+          "RequestAdditionalTime": "",
+          "DefaultLogRetention_Information": "",
+          "DefaultLogRetention_Trace": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "ViewToken",
+          "IDPApplicationId": "",
+          "ManagementCenterURL": "",
+          "IDPApplicationPermissionKey": "",
+          "LogServerConnectionString": "",
+          "IDPApplicationPermissionId": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "AirlineRecLocSyncRobot",
+          "ProcessorLocation": "",
+          "Remark": "",
+          "DefaultLogRetention_Trace": "",
+          "RemarkType": "",
+          "DefaultLogRetention_Error": "",
+          "ConfiguredAccounts": "",
+          "DefaultLogRetention_Information": "",
+          "RemarkCategory": "",
+          "RecordCountToProcess": "",
+          "ConfigUpdateInterval": "",
+          "RequestAdditionalTime": "",
+          "TimerInterval": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "ASP_Commons"
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "dbecRulesManager",
+          "CacheTimeout": "",
+          "RulesDBConnection": "",
+          "RulesDBString": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "eSeaAirTicketingRobot",
+          "AutoTicketThreadSleepTime": "",
+          "EnableAutoTicket": "",
+          "NumberOfProcessTicketThread": "",
+          "ProcessTicketThreadSleepTime": "",
+          "DefaultLogRetention_Information": "",
+          "ConfigUpdateInterval": "",
+          "UnlockTicketingQueueTimeout": "",
+          "DefaultLogRetention_Error": "",
+          "TimerInterval": "",
+          "ProcessorLocation": "",
+          "UnlockPNRLockTimeout": "",
+          "RequestAdditionalTime": "",
+          "MaximumNumberOfRecordInQueue": "",
+          "RecordCountToProcess": "",
+          "ConfiguredAccounts": "",
+          "DefaultLogRetention_Trace": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "ROCache",
+          "ASPCommons_Key": "",
+          "ASPCommons_FolderLocation": "",
+          "ROMultiServerCachePath": "",
+          "Log_DebuggingDuration": "",
+          "Log_InformationDuration": "",
+          "ReadAttempts": "",
+          "ResShellStore_Key": "",
+          "ResShellStore_FolderLocation": "",
+          "Log_ErrorDuration": "",
+          "LogAllEvents": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "NegoProcessorServices",
+          "NegoProcesses_HostName": "",
+          "DefaultCurrency": "",
+          "DefaultConnectionLimit": "",
+          "NegoProcesses_TimeOut": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "eSeaAirPaymentDueRobot"
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "eSeaAirPaymentProcessRobot",
+          "NumberOfDaysBeforeCancelPnrsBaseonPaymentDue": "",
+          "CancelRemark": "",
+          "CancelRemarkType": "",
+          "TimerInterval": "",
+          "ConfigUpdateInterval": "",
+          "RecordCountToProcess": "",
+          "ConfiguredAccounts": "",
+          "ProcessorLocation": "",
+          "DefaultLogRetention_Information": "",
+          "RequestAdditionalTime": "",
+          "NumberOfDaysBeforeSendPaymentDueReminder": "",
+          "DefaultLogRetention_Trace": "",
+          "DefaultLogRetention_Error": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "UnconfirmedSeatSSR",
+          "PNRQueueDaysBefore": "",
+          "TransactionDBString": "",
+          "SeatStatusCodesToIgnore": "",
+          "RecordCountToProcess": "",
+          "RequestAdditionalTime": "",
+          "DefaultLogRetention_Trace": "",
+          "QueueOut": "",
+          "ConfigUpdateInterval": "",
+          "ConfiguredAccounts": "",
+          "AWSRMProject": "",
+          "TimerInterval": "",
+          "ProcessorLocation": "",
+          "SeatStatusCodesToQueue": "",
+          "DefaultLogRetention_Error": "",
+          "DefaultLogRetention_Information": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "eSeaAirResSynch",
+          "ProcessorLocation": "",
+          "RecordCountToProcess": "",
+          "DefaultLogRetention_Information": "",
+          "RequestAdditionalTime": "",
+          "ConfigUpdateInterval": "",
+          "SendMessagesToLog": "",
+          "TimerInterval": "",
+          "ConfiguredAccounts": "",
+          "DefaultLogRetention_Error": "",
+          "DefaultLogRetention_Trace": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "APIProcessorServices",
+          "TestEmailAddress": "",
+          "DefaultToEmailAddress": "",
+          "DefaultConnectionLimit": "",
+          "FareRulesUrl": "",
+          "ProcessorDLLPath": "",
+          "EmailServerPort": "",
+          "DefaultFromEmailAddress": "",
+          "EmailServer": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "UETTR",
+          "WebServiceTimeout": "",
+          "WebServicePassword": "",
+          "WebServiceUserName": "",
+          "WebServiceUrl": ""
+        },
+
+        {
+          "name": "UIProcessorServices",
+          "DefaultConnectionLimit": "",
+          "UIProcesses_HostName": "",
+          "LogTraceInfo": "",
+          "UIProcesses_TimeOut": "",
+          "UIProcesses_Port": "",
+          "ProcessorDLLPath": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "eSeaAirBAGroupPNRRobot",
+          "ConfiguredAccounts": "",
+          "ProcessorLocation": "",
+          "DefaultLogRetention_Information": "",
+          "TimerInterval": "",
+          "RecordCountToProcess": "",
+          "ConfigUpdateInterval": "",
+          "RequestAdditionalTime": "",
+          "DefaultLogRetention_Trace": "",
+          "DefaultLogRetention_Error": ""
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "IDPApplicationServer"
+        },
+
+        {
+          "inherits": "*configuration.defaultApplication",
+          "name": "eSeaAirServices",
+          "AuthProcesses_HostName": "",
+          "P_MP_Mode": "",
+          "CrypticCommand_SOAPAction": "",
+          "ActivitySimulator_AuthenticationPassword": "",
+          "HostAvailabilityRangeDays": "",
+          "CommonsDBString": "",
+          "AirSeaDateRange": "",
+          "TempDirectory": "",
+          "ManagementCenter_ShowApplicationBar": "",
+          "ActivitySimulator_AuthenticationUserName": "",
+          "Header4UserName": "",
+          "AllowedPaymentOfficeId": "",
+          "Header4PosType": "",
+          "PaymentGatewayURL": "",
+          "APIProcesses_TimeOut": "",
+          "AWSRM_TimeOut": "",
+          "RulesDBString": "",
+          "AllowedPaymentRequiredProperties": "",
+          "UseHeader4": "",
+          "MasterPricer_SOAPAction": "",
+          "URLRedirectTemplate": "",
+          "MP_RecomendationCount": "",
+          "AllowedPaymentBookingType": "",
+          "NegoUserName": "",
+          "Header4EnableCompression": "",
+          "MsgeSeaAir_xsd": "",
+          "UIProcesses_HostName": "",
+          "InformativePricing_SOAPAction": "",
+          "AcceptedSchemaVersions": "",
+          "ASP_PNRParserCnxString": "",
+          "ProcessorDLLPath": "",
+          "GetResVersionCustomerId": "",
+          "LOGDATABASE_CONN": "",
+          "Header4URL": "",
+          "AS_DefaultValues": "",
+          "TransactionDBString": "",
+          "UseFareFamilies": "",
+          "AWSRM_HostName": "",
+          "OfficeCodeAccountIdxs": "",
+          "DLLCustomerName": "",
+          "AuditDBString": "",
+          "UIProcesses_TimeOut": "",
+          "PaymentReturnURL": "",
+          "VersonixResSynchIgnoreBadSSL": "",
+          "Header4RequestorType": "",
+          "APIProcesses_HostName": "",
+          "TransactionDBConnection": "",
+          "StandardTimeout": "",
+          "AWSRM_ProjectDefinition": "",
+          "boolUsePropertyBagForMPTB": "",
+          "BaseTypes_xsd": "",
+          "Header4Password": "",
+          "ResShellStore_Key": "",
+          "ActivitySimulator_AuthenticationURL": "",
+          "VersonixResSynchPostURL": "",
+          "AuthProcesses_TimeOut": ""
+        }
+      ]
+}
+		

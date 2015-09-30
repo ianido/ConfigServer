@@ -1,0 +1,45 @@
+﻿{
+  "configuration": {
+    "defaultApplication": {
+      "name": "Default"
+    },
+    "include": "*applications.json",
+    "defaultEnviroment": {
+      "name": "Default",
+      "applications": "*configuration.applications"
+    },
+    "enviroments": [
+      {
+        "name": "Development",
+        "include": "*env.development.json"
+      },
+      {
+        "name": "Testing",
+        "include": "*env.testing.json"
+      },
+      {
+        "name": "Staging",
+        "include": "*env.staging.json"
+      },
+      {        
+        "name": "Production",
+        "include": "*env.production.json"
+      }
+    ],
+    "defaultAccount": {
+      "name": "DefaultAccount",
+      "enviroments": "*configuration.enviroments"
+    },
+    "accounts": [
+      {
+        "include": "*acc.NCL.json",
+        "name": "NCL"
+      },
+      {
+        "include": "*acc.GCC.json",
+        "name": "GCC"
+      }
+    ]
+  }
+}
+		

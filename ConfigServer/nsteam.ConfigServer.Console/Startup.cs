@@ -29,9 +29,7 @@ namespace nsteam.ConfigServer.Types
             startup.Logger.Log("ConfigService open", EventType.Info);
             startup.Webapp = WebApp.Start(baseAddress, startup.Configuration);
             startup.Logger.Log(string.Format(@"ConfigServicerHost-WebAPI is running in : {0}", baseAddress), EventType.Info);
-
             var cfg = new ConfigSettings();
-
 
             HttpClient client = new HttpClient();
             var response = client.GetAsync(baseAddress + "api/" + cfg.Sources[0].name + "/node/" ).Result;

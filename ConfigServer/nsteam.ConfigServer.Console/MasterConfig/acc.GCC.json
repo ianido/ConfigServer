@@ -1,0 +1,4 @@
+﻿{
+    "inherits": "*configuration.defaultAccount",
+    "name": "GCC"
+}

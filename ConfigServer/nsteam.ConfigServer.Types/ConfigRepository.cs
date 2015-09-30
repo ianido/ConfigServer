@@ -110,7 +110,7 @@ namespace nsteam.ConfigServer.Types
 
                         ProcessInheritances(source.name, ref _roofr, _mainroot, obj, MaxRecursiveProcessing);
 
-                        //ProcessReferences(source.name, ref _roofr, obj, obj, MaxRecursiveProcessing);
+                        //ProcessReferences(source.name, ref _roofr, _mainroot, obj, MaxRecursiveProcessing);
 
 
                         string new_json = Newtonsoft.Json.JsonConvert.SerializeObject(obj);
@@ -435,7 +435,11 @@ namespace nsteam.ConfigServer.Types
 
                                     obj[prop] = newobj;
 
-                                    target = Extensions.CreateXMLDocument(rootobj);
+                                    string json_target = Newtonsoft.Json.JsonConvert.SerializeObject(rootobj);
+
+                                    json_target = json_target.RemoveObjectInfo();
+
+                                    target = json_target.CreateXMLDocument();
 
                                     AddReferencedInfo(obj, prop, refId);
                                     modified = true;
@@ -594,7 +598,7 @@ namespace nsteam.ConfigServer.Types
                     CreateBackup(name);
                     SaveConfig(name);
                     _sources[name].Root = null;
-                    LoadDocument();
+                    LoadDocument(name);
                     watcher.StartMonitoring(name);
                 }
                 catch (Exception ex)

@@ -1,0 +1,26 @@
+﻿{
+    "configuration": {
+      "enviroments": [
+        {
+          "name": "Development",
+          "include": "*env.development.json"
+        }        
+      ],
+      "defaultAccount": {
+        "name": "DefaultAccount",
+        "enviroments": "*configuration.enviroments"
+      },
+      "accounts": [
+        {
+          "inherits": "*configuration.defaultAccount",
+          "name": "NCL"
+        },
+        {
+          "inherits" : "*configuration.defaultAccount", 
+          "name": "GCC"
+        }
+      ]
+
+    }
+}
+		

@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.ConfigServer.Console
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.ConfigServer.Provider", "nsteam.ConfigServer.Provider\nsteam.ConfigServer.Provider.csproj", "{89A4106F-F0DB-483A-8550-E9C07B051EA2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.Importer", "nsteam.Importer\nsteam.Importer.csproj", "{A2AD7746-A158-4545-A348-C3C6704E3A49}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -91,6 +93,14 @@ Global
 		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Prod|Any CPU.Build.0 = Release|Any CPU
 		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{89A4106F-F0DB-483A-8550-E9C07B051EA2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Dev|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Dev|Any CPU.Build.0 = Debug|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Prod|Any CPU.ActiveCfg = Release|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Prod|Any CPU.Build.0 = Release|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
