@@ -56,7 +56,7 @@ web.config or app.config
     <section name="ConfigServer" type="ConfigServer.Client.ClientConfigSection, ConfigServer.Client"/>
   </configSections>
 
-  <ConfigServer Server="http://localhost:9000/" BaseNode="configuration"/>
+  <ConfigServer Server="http://localhost:9000/api/myConfig" BaseNode="configuration"/>
 </configuration>
 ```
 
@@ -80,7 +80,7 @@ If you dont want to use the client settings in web.config then you have to speci
 ```
 #!c#
 var basenode = "configuration";
-var srv = new ConfigService(("http://localhost:9000/", basenode);
+var srv = new ConfigService(("http://localhost:9000/api/myConfig", basenode);
 dynamic obj1 = srv.GetTree();
 ```
 
@@ -109,7 +109,7 @@ class BaseObject{
      public string field1{get; set;}
 }
 
-var srv = new ConfigService("http://localhost:9000/", "configuration");
+var srv = new ConfigService("http://localhost:9000/api/myConfig", "configuration");
 BaseObject bo = srv.GetTree<BaseObject>("baseobject");
 ```
 
@@ -122,12 +122,12 @@ BaseObject bo = srv.GetTree<BaseObject>("baseobject");
 
       "applications": [
        {
-           "name" : "LogServer" 
+           "name" : "LogServer", 
            "port" : 1090,
            "address": "127.0.0.1"
        },
        {
-            "name" : "CommonData" 
+            "name" : "CommonData", 
             "port" : 1090,
             "url": "http://127.0.0.1/"
        }]
@@ -139,7 +139,7 @@ Lets grab the "address" of the first element of the array "applications"
 
 ```
 #!c#
-var srv = new ConfigService("http://localhost:9000/", "configuration");
+var srv = new ConfigService("http://localhost:9000/api/myConfig", "configuration");
 dynamic apps = srv.GetTree("applications");
 var address = apps[0].address; 
 ```
@@ -153,20 +153,153 @@ var address = app.address;
 ```
 
 
+###References! I dont want to store the same value every single time###
+```
+#!json
+{
+    "configuration": {
+      "global" : {
+           "ResponseTimeOut" : "180",
+           "SMTPServer" : "mail.com"
+      },
+      "applications": [
+       {
+           "name" : "LogServer",
+           "port" : "1080",
+           "address": "127.0.0.1",
+           "TimeOut" : "@configuration.global.ResponseTimeOut"
+       },
+       {
+            "name" : "CommonData", 
+            "port" : "1090",
+            "url": "http://127.0.0.1/Common"
+       }]
+}
+```
 
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+Now configuration.applications[0].TimeOut contains 180 (referenced from configuration.global.ResponseTimeOut)
 
-### Contribution guidelines ###
+###Inheritance! We need to inherits some fields for override and/or add some others fields###
+```
+#!json
+{
+    "configuration": {
+      "global" : {
+           "ResponseTimeOut" : "180",
+           "SMTPServer" : "mail.com"
+      },
+      "defaultApplication" : {
+           "name" : "Default", 
+           "port" : "1080"
+      },
+      "applications": [
+       {
+           "inherits" : "@configuration.defaultApplication",
+           "name" : "LogServer", 
+           "address": "127.0.0.1",
+           "TimeOut" : "@configuration.global.ResponseTimeOut"
+       },
+       {
+            "inherits" : "@configuration.defaultApplication",
+            "name" : "CommonData",
+            "port ": "1010", 
+            "url": "http://127.0.0.1/Common"
+       }]
+}
+```
 
-* Writing tests
-* Code review
-* Other guidelines
+Previous example every item of the array **applications** inherited fields and values from **defaultApplication** so **configuration.applications[0].port** is equal to **1080** 
 
-### Who do I talk to? ###
+### More advanced features: Include external files ###
 
-* Repo owner or admin
-* Other community or team contact
+You may want to have different files in order to maintain isolated some portions of your configuration.
+
+file master.json
+```
+#!json
+{
+    "configuration": {
+      "include" : "global.json",
+      "applications": [
+       {
+           "inherits" : "@configuration.defaultApplication",
+           "name" : "LogServer", 
+           "address": "127.0.0.1",
+           "TimeOut" : "@configuration.global.ResponseTimeOut"
+       },
+       {
+            "inherits" : "@configuration.defaultApplication",
+            "name" : "CommonData",
+            "port ": "1010", 
+            "url": "http://127.0.0.1/Common"
+       }]
+}
+```
+
+file global.json
+```
+#!json
+{
+      "global" : {
+           "ResponseTimeOut" : "180",
+           "SMTPServer" : "mail.com"
+      },
+      "defaultApplication" : {
+           "name" : "Default", 
+           "port" : "1080"
+      }      
+}
+```
+
+## Server Setup ##
+
+## ConfigServer features ##
+
+* Auto reload the configuration after a change is found on any of the config dependant files.
+* Support multiple configuration worlds (like different endpoints for different applications)
+
+
+## ConfigServer setup ##
+
+* Configuration file: 
+```
+#!xml
+<configuration>
+  <configSections>
+    <section name="SourcesSection"
+             type="nsteam.ConfigServer.Types.ConfigHandler, nsteam.ConfigServer.Types"/>
+  </configSections>
+
+  <SourcesSection>
+    <Sources>
+      <Source name="CustomerPortal" file="portal\master.json"/>    
+      <Source name="CRMCustomer" file="crm\config.json"/>  
+    </Sources>
+  </SourcesSection>
+
+  <appSettings>
+    <add key="serveraddr" value="http://localhost:9000/"></add>
+  </appSettings>
+
+```
+As you see you can speficy multiples configurations endpoints:
+```
+#!c#
+http://localhost:9000/api/CustomerPortal
+http://localhost:9000/api/CRMCustomer
+```
+
+* Install as a service:
+
+```
+#!batch
+
+nsteam.ConfigServer.exe -i
+```
+
+* Run as a console:
+#!batch
+
+nsteam.ConfigServer.exe -console
+```
+
