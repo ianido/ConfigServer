@@ -1,4 +1,5 @@
-# CONFIG SERVER A CENTRALIZED AND DISTRIBUTED WAY TO STORE YOUR APP CONFIGS #
+# CONFIG SERVER #
+## A CENTRALIZED AND DISTRIBUTED WAY TO STORE YOUR APP CONFIGS ##
 
 Configuration never has been so easy. (I know, I know, everybody make this highlight lastly)
 
