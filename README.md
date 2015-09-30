@@ -155,7 +155,7 @@ var address = app.address;
 
 
 ###References! I dont want to store the same value every single time###
-Just add '*' at the front of the value and set the element you want to reference, lets reference global.SMTPServer
+Just add '*' at the front of the value and set the element you want to reference, lets reference global.ResponseTimeOut from the first element of the array applications
 ```
 #!json
 {
