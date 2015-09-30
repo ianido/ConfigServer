@@ -155,6 +155,7 @@ var address = app.address;
 
 
 ###References! I dont want to store the same value every single time###
+Just add '*' at the front of the value and set the element you want to reference, lets reference global.SMTPServer
 ```
 #!json
 {
@@ -168,7 +169,7 @@ var address = app.address;
            "name" : "LogServer",
            "port" : "1080",
            "address": "127.0.0.1",
-           "TimeOut" : "@configuration.global.ResponseTimeOut"
+           "TimeOut" : "*configuration.global.ResponseTimeOut"
        },
        {
             "name" : "CommonData", 
