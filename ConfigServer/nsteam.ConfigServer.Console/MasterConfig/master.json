@@ -10,20 +10,24 @@
     },
     "enviroments": [
       {
-        "name": "Development",
-        "include": "*env.development.json"
+        "inherits": "*configuration.defaultEnviroment",
+        "name": "Default"
       },
       {
-        "name": "Testing",
-        "include": "*env.testing.json"
+        "inherits": "*configuration.enviroments[@Default]",
+        "name": "Development"
       },
       {
-        "name": "Staging",
-        "include": "*env.staging.json"
+        "inherits": "*configuration.enviroments[@Default]",
+        "name": "Testing"
       },
-      {        
-        "name": "Production",
-        "include": "*env.production.json"
+      {
+        "inherits": "*configuration.enviroments[@Default]",
+        "name": "Staging"
+      },
+      {
+        "inherits": "*configuration.enviroments[@Default]",
+        "name": "Production"
       }
     ],
     "defaultAccount": {
@@ -32,10 +36,12 @@
     },
     "accounts": [
       {
+        "inherits": "*configuration.defaultAccount",
         "include": "*acc.NCL.json",
         "name": "NCL"
       },
       {
+        "inherits": "*configuration.defaultAccount",
         "include": "*acc.GCC.json",
         "name": "GCC"
       }

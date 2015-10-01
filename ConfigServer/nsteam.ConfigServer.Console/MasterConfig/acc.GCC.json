@@ -1,4 +1,23 @@
 ﻿{
-    "inherits": "*configuration.defaultAccount",
-    "name": "GCC"
+  "name": "GCC",
+  "enviroments": [
+      {
+        "name": "Default",
+        "applications": {
+
+        }
+      },
+      {
+        "name": "Development"
+      },
+      {
+        "name": "Testing"
+      },
+      {
+        "name": "Staging"
+      },
+      {
+        "name": "Production"
+      }
+    ]
 }

@@ -189,18 +189,6 @@
     <None Include="MasterConfig\acc.GCC.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="MasterConfig\env.development.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="MasterConfig\env.staging.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="MasterConfig\env.testing.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="MasterConfig\env.production.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="MasterConfig\applications.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

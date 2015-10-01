@@ -1,4 +1,20 @@
 ﻿{
-    "inherits": "*configuration.defaultAccount",
-    "name": "NCL"
+  "name": "NCL",
+  "enviroments": [
+      {
+        "name": "Default"
+      },
+      {
+        "name": "Development"
+      },
+      {
+        "name": "Testing"
+      },
+      {
+        "name": "Staging"
+      },
+      {
+        "name": "Production"
+      }
+    ]
 }
