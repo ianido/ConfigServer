@@ -3,9 +3,12 @@
   "enviroments": [
       {
         "name": "Default",
-        "applications": {
-
-        }
+        "applications": [
+          {
+            "name": "AWSRequestManagerV3",
+            "TestKey": "TEST"
+          }
+        ]
       },
       {
         "name": "Development"
