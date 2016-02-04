@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace nsteam.ConfigServer.Provider
 {
-    public class CfgConfigurationSource : ConfigurationSource
+    public class CfgConfigurationSource : ConfigurationProvider
     {
         public string ServiceUrl { get; }
         public string BaseNode { get; }

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.IO;
-using Microsoft.Framework.Configuration.Helper;
-using Microsoft.Framework.Internal;
 using Microsoft.Framework.Configuration;
 
 namespace nsteam.ConfigServer.Provider
