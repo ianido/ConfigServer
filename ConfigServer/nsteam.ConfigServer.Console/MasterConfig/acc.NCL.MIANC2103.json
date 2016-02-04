@@ -1,0 +1,26 @@
+﻿{
+  "name": "MIANC2103",
+  "enviroments": [
+    {
+      "name": "Default",
+      "applications": [
+        {
+          "name": "AWSRequestManagerV3",
+          "TestKey": "TEST FROM MIANC2103"
+        }
+      ]
+    },
+    {
+      "name": "Development"
+    },
+    {
+      "name": "Testing"
+    },
+    {
+      "name": "Staging"
+    },
+    {
+      "name": "Production"
+    }
+  ]
+}

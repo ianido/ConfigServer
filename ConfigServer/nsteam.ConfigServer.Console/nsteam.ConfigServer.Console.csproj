@@ -189,6 +189,15 @@
     <None Include="MasterConfig\acc.GCC.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="MasterConfig\acc.NCL.LONNC2100.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="MasterConfig\acc.NCL.FRAL121X5.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="MasterConfig\acc.NCL.MIANC2103.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="MasterConfig\applications.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

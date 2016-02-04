@@ -1,9 +1,15 @@
 ﻿{
   "name": "NCL",
   "enviroments": [
-      {
-        "name": "Default"
-      },
+    {
+      "name": "Default",
+      "applications": [
+        {
+          "name": "AWSRequestManagerV3",
+          "TestKey": "TEST FROM NCL"
+        }
+      ]
+    },
       {
         "name": "Development"
       },

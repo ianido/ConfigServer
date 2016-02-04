@@ -1,0 +1,26 @@
+﻿{
+  "name": "FRAL121X5",
+  "enviroments": [
+    {
+      "name": "Default"
+    },
+    {
+      "name": "Development",
+      "applications": [
+        {
+          "name": "AWSRequestManagerV3",
+          "TestKey": "TEST FROM FRAL121X5"
+        }
+      ]
+    },
+    {
+      "name": "Testing"
+    },
+    {
+      "name": "Staging"
+    },
+    {
+      "name": "Production"
+    }
+  ]
+}

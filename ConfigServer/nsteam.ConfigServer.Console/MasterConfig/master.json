@@ -41,6 +41,21 @@
         "name": "NCL"
       },
       {
+        "inherits": "*configuration.accounts[@NCL]",
+        "include": "*acc.NCL.MIANC2103.json",
+        "name": "MIANC2103"
+      },
+      {
+        "inherits": "*configuration.accounts[@NCL]",
+        "include": "*acc.NCL.LONNC2100.json",
+        "name": "LONNC2100"
+      },
+      {
+        "inherits": "*configuration.accounts[@NCL]",
+        "include": "*acc.NCL.FRAL121X5.json",
+        "name": "FRAL121X5"
+      },
+      {
         "inherits": "*configuration.defaultAccount",
         "include": "*acc.GCC.json",
         "name": "GCC"

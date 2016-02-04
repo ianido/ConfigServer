@@ -1,0 +1,26 @@
+﻿{
+  "name": "LONNC2100",
+  "enviroments": [
+    {
+      "name": "Default",
+      "applications": [
+        {
+          "name": "AWSRequestManagerV3",
+          "TestKey": "TEST FROM LONNC2100"
+        }
+      ]
+    },
+    {
+      "name": "Development"
+    },
+    {
+      "name": "Testing"
+    },
+    {
+      "name": "Staging"
+    },
+    {
+      "name": "Production"
+    }
+  ]
+}
