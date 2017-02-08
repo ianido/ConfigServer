@@ -1,0 +1,19 @@
+﻿{
+    "configuration": {
+        "base": {
+            "field0": "value0"
+        },
+        "baseobject": {
+            "inherits": "*configuration.base",
+            "field0": "value0X",
+            "field1": "value1"
+        },
+        "newobject": {
+            "inherits": "*configuration.baseobject",
+            "field0": "value0XY",
+            "field1": "value1XY",
+            "field2": "value2XY"
+        }
+    }
+}
+		

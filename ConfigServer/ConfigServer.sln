@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.ConfigServer.Types", "nsteam.ConfigServer.Types\nsteam.ConfigServer.Types.csproj", "{17222AE1-48B1-4FAF-B0DC-4A2FED8F8E9C}"
 EndProject
@@ -20,6 +20,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.ConfigServer.Provider", "nsteam.ConfigServer.Provider\nsteam.ConfigServer.Provider.csproj", "{89A4106F-F0DB-483A-8550-E9C07B051EA2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nsteam.Importer", "nsteam.Importer\nsteam.Importer.csproj", "{A2AD7746-A158-4545-A348-C3C6704E3A49}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Rewrite", "Rewrite", "{284EF95E-49B4-4717-82AB-825243990DD1}"
+EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "yupisoft.ConfigServer", "yupisoft.ConfigServer\yupisoft.ConfigServer.xproj", "{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}"
+EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "yupisoft.ConfigServer.Core", "yupisoft.ConfigServer.Core\yupisoft.ConfigServer.Core.xproj", "{223097D2-1767-4D43-90EC-2FD113DF8EFD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -101,8 +107,28 @@ Global
 		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Prod|Any CPU.Build.0 = Release|Any CPU
 		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2AD7746-A158-4545-A348-C3C6704E3A49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Dev|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Dev|Any CPU.Build.0 = Debug|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Prod|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Prod|Any CPU.Build.0 = Debug|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643}.Release|Any CPU.Build.0 = Release|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Dev|Any CPU.ActiveCfg = Debug|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Dev|Any CPU.Build.0 = Debug|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Prod|Any CPU.ActiveCfg = Debug|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Prod|Any CPU.Build.0 = Debug|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{EC157CF7-EDED-46B9-BDFC-7EF55B60C643} = {284EF95E-49B4-4717-82AB-825243990DD1}
+		{223097D2-1767-4D43-90EC-2FD113DF8EFD} = {284EF95E-49B4-4717-82AB-825243990DD1}
 	EndGlobalSection
 EndGlobal

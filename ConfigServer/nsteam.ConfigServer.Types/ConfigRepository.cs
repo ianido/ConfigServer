@@ -453,7 +453,7 @@ namespace nsteam.ConfigServer.Types
                             }
                         }
                     }
-                } while (modified);
+                } while (modified); 
             }
         }
 
