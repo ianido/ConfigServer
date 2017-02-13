@@ -1,14 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
+﻿using System.Linq;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
+using System.Diagnostics;
+#if NET462
+using Microsoft.AspNetCore.Hosting.WindowsServices;
+#endif
 namespace yupisoft.ConfigServer
 {
     public class Program
     {
-        public static void Main(string[] args)
+        static void Main(string[] args)
         {
+            var host = new WebHostBuilder()
+                .UseKestrel()
+                .UseContentRoot(Directory.GetCurrentDirectory())
+                .UseIISIntegration()
+                .UseStartup<Startup>()
+                .Build();
+
+            if (Debugger.IsAttached || args.Contains("--debug"))
+            {
+                host.Run();
+            }
+            else
+            {
+#if NET462
+                host.RunAsMyService();
+#endif
+            }
         }
+
     }
 }

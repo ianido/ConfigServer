@@ -84,7 +84,5 @@ namespace nsteam.ConfigServer.Console
             Startup.CloseServer();
         }
 
-
-
     }
 }

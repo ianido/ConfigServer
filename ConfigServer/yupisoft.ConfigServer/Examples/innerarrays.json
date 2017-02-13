@@ -3,20 +3,31 @@
     "baseobject": {
       "fieldObject": [
         {
-          "name": "element1",
+          "$key": "element1",
           "options": [
             {
-               "name" :  "toto3"
+              "$key": "toto3"
             },
             {
-               "name" :  "toto2"
+              "$key": "toto2"
             }
           ]
         }
       ]
     },
     "newobject": {
-      "inherits": "*configuration.baseobject"
+      "inherits": "*configuration.baseobject",
+      "fieldObject": [
+        {
+          "$key": "element2",
+          "options": [
+            {
+              "$key": "toto2",
+              "field": "newdata"
+            }
+          ]
+        }
+      ]
     }
   }
 }

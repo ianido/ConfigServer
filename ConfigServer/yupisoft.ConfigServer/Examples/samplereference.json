@@ -1,0 +1,18 @@
+﻿{
+  "configuration": {
+    "applications" :  ["aa","bb", "cc"],
+    "base": {
+      "field0": "value0"
+    },
+    "baseobject": {
+      "field0": "*configuration.base.field0",
+      "field1": "*configuration.applications"
+    },
+    "newobject": {
+      "field0": "value0XY",
+      "field1": "value1XY",
+      "field2": "value2XY"
+    }
+  }
+}
+		
