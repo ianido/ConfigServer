@@ -176,12 +176,8 @@ namespace yupisoft.ConfigServer.Core.Json
             return result;
         }
 
-        public static void Process()
+        public static void Process(JToken obj)
         {
-            string baseLocation = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            string content = System.IO.File.ReadAllText(Path.Combine(baseLocation, "../../../Examples/fullcomplexinheritance.json"));
-            var obj = JsonConvert.DeserializeObject<JToken>(content);
-
             while (Nav(obj, obj)) { };
             Console.WriteLine(obj.ToString());
         }
