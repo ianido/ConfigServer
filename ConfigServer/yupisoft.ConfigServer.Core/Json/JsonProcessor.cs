@@ -12,7 +12,7 @@ namespace yupisoft.ConfigServer.Core.Json
 {
     public class JsonProcessor
     {
-        internal static JToken CreateFromContent(object content)
+        private static JToken CreateFromContent(object content)
         {
             JToken token = content as JToken;
             if (token != null)
@@ -21,7 +21,7 @@ namespace yupisoft.ConfigServer.Core.Json
             }
             return new JValue(content);
         }
-        internal static void MergeEnumerableContent(JContainer target, IEnumerable content, JsonMergeSettings settings, JTokenEqualityComparer comparer)
+        private static void MergeEnumerableContent(JContainer target, IEnumerable content, JsonMergeSettings settings, JTokenEqualityComparer comparer)
         {
             switch (settings.MergeArrayHandling)
             {
@@ -111,7 +111,7 @@ namespace yupisoft.ConfigServer.Core.Json
                     throw new ArgumentOutOfRangeException(nameof(settings), "Unexpected merge array handling when merging JSON.");
             }
         }
-        internal static void Merge(JContainer target, object content, JsonMergeSettings settings)
+        private static void Merge(JContainer target, object content, JsonMergeSettings settings)
         {
             switch (target.GetType().ToString())
             {
@@ -134,7 +134,7 @@ namespace yupisoft.ConfigServer.Core.Json
                     break;
             }
         }
-        internal static bool Nav(JToken tree, JToken token)
+        private static bool Nav(JToken tree, JToken token)
         {
             bool result = false;
             if (token.Type == JTokenType.String)
@@ -154,13 +154,7 @@ namespace yupisoft.ConfigServer.Core.Json
                         result = true;
                     }
                     else
-                    {
-                        if (value.Contains("\\"))
-                        {
-                            // Is a file
-
-
-                        }
+                    {                        
                         // This is a reference.
                         JToken refToken = tree.SelectToken(value.Substring(1));
                         token.Replace(refToken);
@@ -175,11 +169,11 @@ namespace yupisoft.ConfigServer.Core.Json
             }
             return result;
         }
-
-        public static void Process(JToken obj)
+        public static JToken Process(string content)
         {
+            var obj = JsonConvert.DeserializeObject<JToken>(content);
             while (Nav(obj, obj)) { };
-            Console.WriteLine(obj.ToString());
+            return obj;
         }
     }
 }
