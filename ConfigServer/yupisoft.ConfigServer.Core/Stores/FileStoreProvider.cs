@@ -11,27 +11,30 @@ namespace yupisoft.ConfigServer.Core.Stores
     public class FileStoreProvider : IStoreProvider
     {
         public string FilePath { get; private set; }
+        public string FileName { get; private set; }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="connectionString">It is the path to the folder that contain the configuration files</param>
         /// <param name="baseSource">The entry point file name. (main file)</param>
         /// <returns></returns>
-        public TNode Get(string baseSource)
+        public JToken Get()
         {
             string content = System.IO.File.ReadAllText(FilePath);            
             JToken token = JsonProcessor.Process(content);
-            return new TNode(baseSource, token);
+            return token;
         }
 
-        public void Initialize(string connectionString)
+        public void Initialize(string connectionString, string getCommand, string saveCommand)
         {
             FilePath = connectionString;
+            FileName = saveCommand;
         }
 
-        public void Set(TNode node)
+        public void Set(JToken node)
         {
-            throw new NotImplementedException();
+            string content = JsonConvert.SerializeObject(node);
+            System.IO.File.WriteAllText(FilePath, content);
         }
     }
 }
