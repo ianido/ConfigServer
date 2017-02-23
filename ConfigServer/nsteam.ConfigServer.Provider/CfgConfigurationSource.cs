@@ -44,5 +44,10 @@ namespace nsteam.ConfigServer.Provider
             Data = parser.Parse("{ CfgServer:" + json + " }");            
         }
 
+        public override void Set(string key, string value)
+        {
+            base.Set(key, value);
+        }
+
     }
 }
