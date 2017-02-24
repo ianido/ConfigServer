@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using yupisoft.ConfigServer.Core;
+using yupisoft.ConfigServer.Core.Stores;
+using yupisoft.ConfigServer.Core.Watchers;
+using System.IO;
 
 namespace yupisoft.ConfigServer
 {
@@ -36,6 +40,14 @@ namespace yupisoft.ConfigServer
             services.AddAuthentication();
             ConfigureLoggingServices(services);
             ConfigureAPISecurityServices(services);
+
+            string configPath = Path.Combine(hostingEnvironment.ContentRootPath, "examples");
+
+
+            services.AddSingleton<IConfigWatcher>(imp => new ConfigWatcher<FileWatcherProvider>(imp.GetService<ILogger<IConfigWatcher>>()));
+            services.AddSingleton<IStoreProvider>(imp => new FileStoreProvider(configPath, "sampleinheritancewithinclude.json", imp.GetService<IConfigWatcher>()));
+            services.AddSingleton<ConfigServerManager>();
+
             //ConfigureCachingServices(services, configuration);
 
             IMvcBuilder mvcBuilder = services.AddMvc(

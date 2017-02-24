@@ -57,7 +57,8 @@
       "appsettings.json",
       "appsettings.*.json",
       "nlog.config"
-    ]
+    ],
+    "define": []
   },
 
   "runtimeOptions": {

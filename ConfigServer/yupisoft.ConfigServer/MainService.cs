@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Hosting.WindowsServices;
 #endif
 namespace yupisoft.ConfigServer
 {
-    #if NET462
+#if NET462
     internal class MyWebHostService : WebHostService
     {
         public MyWebHostService(IWebHost host) : base(host)
@@ -41,5 +41,5 @@ namespace yupisoft.ConfigServer
             ServiceBase.Run(webHostService);
         }
     }
-    #endif
+#endif
 }

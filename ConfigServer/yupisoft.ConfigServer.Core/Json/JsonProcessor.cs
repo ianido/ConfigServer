@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using yupisoft.ConfigServer.Core.Stores;
 
 namespace yupisoft.ConfigServer.Core.Json
 {
@@ -134,7 +135,7 @@ namespace yupisoft.ConfigServer.Core.Json
                     break;
             }
         }
-        private static bool Nav(JToken tree, JToken token)
+        private static bool Nav(JToken tree, JToken token, IStoreProvider storeProvider, IConfigWatcher watcher)
         {
             bool result = false;
             if (token.Type == JTokenType.String)
@@ -153,11 +154,44 @@ namespace yupisoft.ConfigServer.Core.Json
                         toReplace.Replace(clonedRefToken);
                         result = true;
                     }
+                    else if (((JProperty)token.Parent).Name == "$include")
+                    {
+                        JToken refToken = storeProvider.Get(value.Substring(1));
+                        if (refToken != null)
+                        {
+                            token.Replace(refToken);
+                            token = refToken;
+                        }
+                    }
                     else
-                    {                        
+                    {
                         // This is a reference.
                         JToken refToken = tree.SelectToken(value.Substring(1));
-                        token.Replace(refToken);
+                        if (refToken == null) // There is no node referenced
+                        {
+                            // Analize the path
+                            // Example: archive.json.base.node1
+                            var followingParts = value.Substring(1).Split('.');
+                            string filename = "";
+                            for (int i = 0; i < followingParts.Length; i++) {
+                                filename += ((filename.Length != 0) ? "." : "") + followingParts[i];
+                                if ((refToken = storeProvider.Get(filename)) != null)
+                                {
+                                    // Check for more parts?
+                                    if (i < followingParts.Length - 1)
+                                    {
+                                        string jpath = string.Join(".", followingParts, i + 1, followingParts.Length - i - 1);
+                                        refToken = refToken.SelectToken(jpath);
+                                    }
+                                    break;
+                                }
+                            }                            
+                        }
+                        if (refToken != null)
+                        {
+                            token.Replace(refToken);
+                            token = refToken;
+                        }
                         result = true;
                     }
                 }
@@ -165,15 +199,22 @@ namespace yupisoft.ConfigServer.Core.Json
 
             foreach (var o in token.ToArray())
             {
-                if (o is JToken) result = result || Nav(tree, o);
+                if (o is JToken) result = result || Nav(tree, o, storeProvider, watcher);
             }
             return result;
         }
-        public static JToken Process(string content)
+        private static void Process(JToken token, IStoreProvider storeProvider, IConfigWatcher watcher)
         {
+            while (Nav(token, token, storeProvider, watcher)) { };
+        }
+
+        public static JToken Process(string content, IStoreProvider storeProvider, IConfigWatcher watcher)
+        {
+            watcher.StopMonitoring();
             var obj = JsonConvert.DeserializeObject<JToken>(content);
-            while (Nav(obj, obj)) { };
-            return obj;
+            Process(obj, storeProvider, watcher);
+            watcher.StartMonitoring();
+            return obj;            
         }
     }
 }

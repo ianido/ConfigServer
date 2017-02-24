@@ -1,28 +1,31 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using yupisoft.ConfigServer.Client;
 
 namespace ConsoleApp1
 {
     public class Program
     {
-        static Timer timer { get; set; }
         public static void Main(string[] args)
         {
-            timer = new Timer(new TimerCallback(tmCallback), "abc", 2000, 1000);
-            Console.WriteLine("hey");
-            Console.ReadLine();
+            ConfigService cfg = new ConfigService("http://localhost:27764", "");
+
+            string text = "";
+            do
+            {
+                dynamic obj = cfg.Get<dynamic>("configuration");
+                string content = JsonConvert.SerializeObject(obj, Formatting.Indented);
+
+                Console.WriteLine(content);
+                Console.WriteLine("=============================");
+                Console.WriteLine("Enter 'X' to Exit");
+                text = Console.ReadLine();
+            } while (text != "X");
         }
 
-        public static void tmCallback(object state)
-        {
-            timer.Change(Timeout.Infinite, 1000);
-            Console.Write("gatico: ");
-            Thread.Sleep(3000);
-            Console.WriteLine(state);
-            timer.Change(0, 1000);
-        }
     }
 }

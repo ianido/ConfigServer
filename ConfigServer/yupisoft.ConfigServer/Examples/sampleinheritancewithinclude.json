@@ -2,12 +2,12 @@
   "configuration": {
     "basefile": "*base.json",    
     "baseobject": {
-      "inherits": "*configuration.basefile.base",
+      "$inherits": "*configuration.basefile.base",
       "field0": "value0X",
-      "field1": "value1"
+      "field1": "valueX"
     },
     "newobject": {
-      "inherits": "*configuration.baseobject",
+      "$inherits": "*configuration.baseobject",
       "field0": "value0XY",
       "field1": "value1XY",
       "field2": "value2XY"

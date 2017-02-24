@@ -12,44 +12,57 @@ namespace yupisoft.ConfigServer.Core.Stores
 {
     public class MongoStoreProvider : IStoreProvider
     {
+        private IConfigWatcher _watcher;
+        private string _entityName;
+
+        public event StoreChanged Change;
+
         public string MongoConnection { get; private set; }
         public string MongoDatabase { get; private set; }
-        public string GetCommand { get; private set; }
+        public string StartEntityName
+        {
+            get
+            {
+                return _entityName;
+            }
+        }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="connectionString">the connection String to the mongo DB Server|database: "mongodb://localhost:27017|EmployeeDB"</param>
-        /// <param name="getCommand">tha query to the collection which contain the actual document node: "Collection Name|filter"  filter should be like {key: value}</param>
-        ///                                                            will be equivalent to:             select * from Collection Where Key = Value
-        /// <param name="saveCommand"></param>
-        public void Initialize(string connectionString, string getCommand, string saveCommand)
+        public MongoStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher)
         {
             string[] connectionStringParts = connectionString.Split('|');
-            GetCommand = getCommand;
             if (connectionStringParts.Length < 2) throw new Exception("Incorrect Connection String");
             MongoConnection = connectionStringParts[0];
             MongoDatabase = connectionStringParts[1];
-        }
-
-        public void Set(JToken node)
+            _entityName = startEntityName;
+            _watcher = watcher;
+    }
+        public void Set(JToken node, string entityName)
         {
-            throw new NotImplementedException();
+            var _client = new MongoClient(MongoConnection);            
+            var _db = _client.GetDatabase(MongoDatabase);
+            if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
+            var collection = _db.GetCollection<BsonDocument>(entityName);
+            if (collection == null) throw new Exception("No collection named: " + entityName);
+            JObject obj = new JObject();
+            obj["created"] = DateTime.UtcNow;
+            obj["node"] = node;
+            var toInsert = obj.ToBsonDocument(); 
+            collection.InsertOne(toInsert);
         }
-
-        public JToken Get()
+        public JToken Get(string entityName)
         {
-            string[] commandStringParts = GetCommand.Split('|');
-            if (commandStringParts.Length < 2) throw new Exception("Incorrect Query String");
-
             var _client = new MongoClient(MongoConnection);
             var _db = _client.GetDatabase(MongoDatabase);
-
-            var collection = _db.GetCollection<BsonDocument>(commandStringParts[0]);
-            FilterDefinition<BsonDocument> filter = commandStringParts[1]; // "{ x: 1 }";
-
-            var v = collection.Find(filter);
-            var content = v.ToJson();
-            var token = JsonProcessor.Process(content);
+            if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
+            var collection = _db.GetCollection<BsonDocument>(entityName);
+            if (collection == null) throw new Exception("No collection named: " + entityName);
+            var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
+            var content = v.First()["node"].ToJson();
+            if (content == null) content = "{}";
+            var token = JsonProcessor.Process(content, this, _watcher);
             return token;
         }
     }
