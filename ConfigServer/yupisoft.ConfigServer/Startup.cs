@@ -8,6 +8,7 @@ using yupisoft.ConfigServer.Core;
 using yupisoft.ConfigServer.Core.Stores;
 using yupisoft.ConfigServer.Core.Watchers;
 using System.IO;
+using System.Collections.Generic;
 
 namespace yupisoft.ConfigServer
 {
@@ -42,9 +43,7 @@ namespace yupisoft.ConfigServer
             ConfigureAPISecurityServices(services);
             string configPath = Path.Combine(hostingEnvironment.ContentRootPath, "examples");
 
-            services.AddSingleton<IStoreProvider>(imp => new FileStoreProvider(configPath, "sampleinheritancewithinclude.json", 
-                                                         new ConfigWatcher<FileWatcherProvider>(imp.GetService<ILogger<IConfigWatcher>>())));
-            services.AddSingleton<ConfigServerManager>();
+            services.AddConfigServer(configuration);
 
             //ConfigureCachingServices(services, configuration);
 

@@ -11,26 +11,26 @@ namespace yupisoft.ConfigServer.Core
     {
         private static object objlock = new object();
 
-        private List<ConfigServerTenant> _tenants;
+        private ConfigServerTenants _tenants;
 
 
-        public ConfigServerManager(List<ConfigServerTenant> tenants)
+        public ConfigServerManager(ConfigServerTenants tenants)
         {
             _tenants = tenants;
-            foreach (var tenant in _tenants)
+            foreach (var tenant in _tenants.Tenants)
             {
                 tenant.Store.Change += _store_Change;
                 tenant.Token = tenant.Store.Get(tenant.Store.StartEntityName);
-            }          
+            }
         }
 
         private void _store_Change(IStoreProvider sender, JToken newToken)
         {
-            foreach (var tenant in _tenants)
+            foreach (var tenant in _tenants.Tenants)
             {
                 if (tenant.Store.StartEntityName == sender.StartEntityName)
                     tenant.Token = newToken;
-            }            
+            }
         }
 
         public JToken Get(string path, int tenantId)
@@ -41,13 +41,19 @@ namespace yupisoft.ConfigServer.Core
         public T Get<T>(string path, int tenantId)
         {
             JToken token = null;
+            bool found = false;
 
-            foreach (var tenant in _tenants)
+            foreach (var tenant in _tenants.Tenants)
             {
                 if (tenant.TenantConfig.Id == tenantId)
+                {
                     token = tenant.Token;
+                    found = true;
+                }
             }
-            if (token == null) throw new Exception("Tenant: " + tenantId + " not found.");
+
+            if (!found) throw new Exception("Tenant: " + tenantId + " not found.");
+            if (token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
             lock (token)
             {
@@ -62,16 +68,21 @@ namespace yupisoft.ConfigServer.Core
         {
             JToken token = null;
             IStoreProvider store = null;
+            bool found = false;
 
-            foreach (var tenant in _tenants)
+
+            foreach (var tenant in _tenants.Tenants)
             {
                 if (tenant.TenantConfig.Id == tenantId)
                 {
                     token = tenant.Token;
                     store = tenant.Store;
+                    found = true;
                 }
             }
-            if (token == null) throw new Exception("Tenant: " + tenantId + " not found.");
+            if (!found) throw new Exception("Tenant: " + tenantId + " not found.");
+            if (token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
+
             lock (token)
             {
                 JToken selToken = token.SelectToken(path);
@@ -81,6 +92,5 @@ namespace yupisoft.ConfigServer.Core
             }
             return true;
         }
-
     }
 }

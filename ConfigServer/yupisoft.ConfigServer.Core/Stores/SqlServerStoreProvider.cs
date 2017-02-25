@@ -7,12 +7,14 @@ using System.Data.SqlClient;
 using yupisoft.ConfigServer.Core.Json;
 using Newtonsoft.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace yupisoft.ConfigServer.Core.Stores
 {
     public class SqlServerStoreProvider : IStoreProvider
     {
         private IConfigWatcher _watcher;
+        private ILogger _logger;
         private string _entityName;
 
         public event StoreChanged Change;
@@ -30,11 +32,12 @@ namespace yupisoft.ConfigServer.Core.Stores
                 _entityName = rgx.Replace(value, "");
             }
         }
-        public SqlServerStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher)
+        public SqlServerStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
         {
             ConnectionString = connectionString;
             _entityName = startEntityName;
             _watcher = watcher;
+            _logger = logger;
     }
         /// <summary>
         /// Node Path should include the UPDATE QUERY with @node parameter: UPDATE Table1 set node = @node where key = key1
@@ -56,6 +59,10 @@ namespace yupisoft.ConfigServer.Core.Stores
                     cmdCreate.ExecuteNonQuery();
                 cmd.ExecuteNonQuery();
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+            }
             finally
             {
                 if (conn.State == System.Data.ConnectionState.Open)
@@ -71,13 +78,24 @@ namespace yupisoft.ConfigServer.Core.Stores
         public JToken Get(string entityName)
         {
             SqlConnection conn = new SqlConnection(ConnectionString);
+            SqlCommand cmdExist = new SqlCommand("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @entity", conn);
+            cmdExist.Parameters.AddWithValue("@entity", entityName);
             SqlCommand cmd = new SqlCommand("select top 1 node from " + entityName + " orderby created desc", conn);
             try
             {
+                string content = null;
                 conn.Open();
-                var content = (string)cmd.ExecuteScalar();
+                if ((int)cmdExist.ExecuteScalar() == 0)
+                    content = "{}";
+                else
+                    content = (string)cmd.ExecuteScalar();
                 JToken token = JsonProcessor.Process(content, this, _watcher);
                 return token;
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return null;
             }
             finally
             {

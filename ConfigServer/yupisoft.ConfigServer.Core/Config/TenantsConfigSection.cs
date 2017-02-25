@@ -17,6 +17,7 @@ namespace yupisoft.ConfigServer.Core
     {
         public int Id { get; set; }
         public string Name { get; set; }
+        public bool Enabled { get; set; }
         public string ApiKey { get; set; }
         public StoreConfigSection Store { get; set; }
 
@@ -29,8 +30,7 @@ namespace yupisoft.ConfigServer.Core
     public class TenantsConfigSection
     {
 
-
-        List<TenantConfigSection> Tenants;
+        public List<TenantConfigSection> Tenants { get; set; }
 
         public TenantsConfigSection()
         {

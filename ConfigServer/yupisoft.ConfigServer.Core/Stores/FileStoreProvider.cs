@@ -7,12 +7,15 @@ using yupisoft.ConfigServer.Core.Json;
 using Newtonsoft.Json;
 using System.IO;
 using System.Collections;
+using Microsoft.Extensions.Logging;
 
 namespace yupisoft.ConfigServer.Core.Stores
 {
     public class FileStoreProvider : IStoreProvider
     {
         private IConfigWatcher _watcher;
+        private ILogger _logger;
+
         private string FILEDATEFORMAT = "yyyy-MM-dd-hh-mm-ss";
         private string _entityName;
         public event StoreChanged Change;
@@ -23,13 +26,14 @@ namespace yupisoft.ConfigServer.Core.Stores
             {
                 return _entityName;
             }
-        }        
-        public FileStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher)
+        }
+        public FileStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
         {
             FilePath = connectionString;
             _entityName = startEntityName;
+            _logger = logger;
             _watcher = watcher;
-            _watcher.Change += _watcher_Change;            
+            _watcher.Change += _watcher_Change;
         }
         private void _watcher_Change(object sender, string fileName)
         {

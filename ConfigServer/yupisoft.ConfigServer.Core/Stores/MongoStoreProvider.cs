@@ -7,12 +7,15 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using MongoDB.Driver.Builders;
 using yupisoft.ConfigServer.Core.Json;
+using Microsoft.Extensions.Logging;
 
 namespace yupisoft.ConfigServer.Core.Stores
 {
     public class MongoStoreProvider : IStoreProvider
     {
         private IConfigWatcher _watcher;
+        private ILogger _logger;
+
         private string _entityName;
 
         public event StoreChanged Change;
@@ -30,7 +33,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         /// 
         /// </summary>
         /// <param name="connectionString">the connection String to the mongo DB Server|database: "mongodb://localhost:27017|EmployeeDB"</param>
-        public MongoStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher)
+        public MongoStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
         {
             string[] connectionStringParts = connectionString.Split('|');
             if (connectionStringParts.Length < 2) throw new Exception("Incorrect Connection String");
@@ -38,10 +41,12 @@ namespace yupisoft.ConfigServer.Core.Stores
             MongoDatabase = connectionStringParts[1];
             _entityName = startEntityName;
             _watcher = watcher;
-    }
+            _logger = logger;
+
+        }
         public void Set(JToken node, string entityName)
         {
-            var _client = new MongoClient(MongoConnection);            
+            var _client = new MongoClient(MongoConnection);
             var _db = _client.GetDatabase(MongoDatabase);
             if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
             var collection = _db.GetCollection<BsonDocument>(entityName);
@@ -54,7 +59,7 @@ namespace yupisoft.ConfigServer.Core.Stores
             JObject obj = new JObject();
             obj["created"] = DateTime.UtcNow;
             obj["node"] = node;
-            var toInsert = obj.ToBsonDocument(); 
+            var toInsert = obj.ToBsonDocument();
             collection.InsertOne(toInsert);
         }
         public JToken Get(string entityName)
@@ -65,7 +70,7 @@ namespace yupisoft.ConfigServer.Core.Stores
             var collection = _db.GetCollection<BsonDocument>(entityName);
             if (collection == null) return null;
             var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
-            var content = v.First()["node"].ToJson();
+            var content = v.FirstOrDefault()?["node"]?.ToJson();
             if (content == null) content = "{}";
             var token = JsonProcessor.Process(content, this, _watcher);
             return token;

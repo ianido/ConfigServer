@@ -21,23 +21,45 @@ namespace yupisoft.ConfigServer.Controllers
         }
         
         [HttpPost]
-        [Route("api/[controller]/set")]
-        public IActionResult Set([FromBody]TNode node)
+        [Route("api/{tenantId}/[controller]/set")]
+        public IActionResult Set(int tenantId, [FromBody]TNode node)
         {
-            _logger.LogTrace("Success");
             ApiActionResult result = new ApiActionResult();
-            result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
+            try
+            {
+                bool success = _cfg.Set(node.Path, tenantId, node.Value);
+                if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
+                    else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
+                _logger.LogTrace("");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogTrace("Error:" + ex.ToString());
+                result.messages.Add(new ApiResultMessage() { Message = ex.Message, MessageType = ApiResultMessage.MessageTypeValues.Error });
+            }
             return result;
         }
 
         [HttpGet]
-        [Route("api/[controller]/get/{path}")]
-        public IActionResult Get(string path)
+        [Route("api/{tenantId}/[controller]/get/{path}")]
+        public IActionResult Get(int tenantId, string path)
         {
-            _logger.LogTrace("Success");
-            ApiSingleResult<object> result = new ApiSingleResult<object>();            
-            result.Item = _cfg.Get(path); 
+            ApiSingleResult<object> result = new ApiSingleResult<object>();
+            try
+            {
+                result.Item = _cfg.Get(path, tenantId);
+                if (result.Item == null) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.NotFound });
+                 else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
+
+                _logger.LogTrace("");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogTrace("Error:" + ex.ToString());
+                result.messages.Add(new ApiResultMessage() { Message = ex.Message, MessageType = ApiResultMessage.MessageTypeValues.Error });
+            }
             return result;
+
         }
 
         [HttpGet]
