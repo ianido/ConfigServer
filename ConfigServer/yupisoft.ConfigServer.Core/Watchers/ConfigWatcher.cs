@@ -20,19 +20,19 @@ namespace yupisoft.ConfigServer.Core
 
         private int FILEWATCHER_MILLESECONDS = 2000;
 
-        private Dictionary<string, List<T>> _watcher;        
+        List<T> _watcher;        
 
         public event ChangeDetection Change;
 
-        protected virtual void OnChange(string groupName, string fileName)
+        protected virtual void OnChange(string fileName)
         {
-            if (Change != null) Change(groupName, fileName);
+            if (Change != null) Change(this, fileName);
         }
 
         public ConfigWatcher(ILogger<IConfigWatcher> logger)
         {
             _logger = logger;
-            _watcher = new Dictionary<string, List<T>>();
+            _watcher = new List<T>();
             _timer = new Timer(new TimerCallback(Timer_Elapsed), _watcher, Timeout.Infinite, FILEWATCHER_MILLESECONDS);
         }
 
@@ -40,124 +40,60 @@ namespace yupisoft.ConfigServer.Core
         {
             //Check for file modifications
             _timer.Change(Timeout.Infinite, FILEWATCHER_MILLESECONDS); // Disable the timer;
-            foreach (var key in _watcher.Keys.ToList())
-            {
-                foreach (var w in _watcher[key].ToList())
+
+                foreach (var w in _watcher.ToList())
                 {
                     if (w.EnableRaisingEvents == true)
                         w.CheckForChange();
                 }
-            }
+
             _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS); // Reenable the timer;
-        }
-
-        public void StartMonitoring(string groupName)
-        {
-            _timer.Change(Timeout.Infinite, FILEWATCHER_MILLESECONDS);
-            List<T> watchers = _watcher[groupName];
-            foreach (var w in watchers)
-            {
-                w.EnableRaisingEvents = true;
-            }
-            _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS);
-        }
-
-        public void StopMonitoring(string groupName)
-        {
-            _timer.Change(Timeout.Infinite, FILEWATCHER_MILLESECONDS);
-            List<T> watchers = _watcher[groupName];
-            foreach (var w in watchers)
-            {
-                w.EnableRaisingEvents = false;
-            }
-            _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS);
         }
 
         public void StartMonitoring()
         {
             _timer.Change(Timeout.Infinite, FILEWATCHER_MILLESECONDS);
-            foreach (var key in _watcher.Keys)
-            {
-                foreach (var w in _watcher[key])
-                {
-                    w.EnableRaisingEvents = true;
-                }
-            }
+            foreach (var w in _watcher)
+                w.EnableRaisingEvents = true;
             _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS);
         }
 
         public void StopMonitoring()
         {
             _timer.Change(Timeout.Infinite, FILEWATCHER_MILLESECONDS);
-            foreach (var key in _watcher.Keys)
-            {
-                foreach (var w in _watcher[key])
-                {
-                    w.EnableRaisingEvents = false;
-                }
-            }
+            foreach (var w in _watcher)
+                w.EnableRaisingEvents = false;
             _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS);
         }
 
-        public void AddGroupWatcher(string groupName, string[] files)
-        {
-            if (!_watcher.ContainsKey(groupName))
-            {
-                List<T> lw = new List<T>();
-                foreach (var filename in files)
-                {
-                    T w = new T();
 
-                    w.Tag = groupName;
-                    w.EntityName = filename;
-                    w.Changed += W_Changed;
-                    w.EnableRaisingEvents = false;
-                    lw.Add(w);
-                }
-                _watcher.Add(groupName, lw.ToList());
-            }
-            else
-                throw new Exception("group already exist: " + groupName);
+        public void AddToWatcher(string[] entityNames)
+        {
+            foreach (var filename in entityNames)
+                AddToWatcher(filename);
         }
 
-        public void AddToGroupWatcher(string groupName, string filename)
+        public void AddToWatcher(string entityName)
         {
-            if (!_watcher.ContainsKey(groupName))
+            if (_watcher.FirstOrDefault(f => f.EntityName == entityName) == null)
             {
-                _watcher.Add(groupName, new List<T>());
-            }
-            List<T> fw = _watcher[groupName];
-
-            if (fw.FirstOrDefault(f => f.EntityName == filename) == null)
-            {
-
                 T w = new T();
-                w.LastWriteDate = new FileInfo(filename).LastWriteTimeUtc;
-                w.Tag = groupName;
-                w.EntityName = filename;
+                w.LastWriteDate = new FileInfo(entityName).LastWriteTimeUtc;
+                w.EntityName = entityName;
                 w.Changed += W_Changed;
                 w.EnableRaisingEvents = false;
-                fw.Add(w);
+                _watcher.Add(w);
             }
         }
 
-        public void RemoveGroupWatcher(string groupName)
+        public void ClearWatcher()
         {
-            if (_watcher.ContainsKey(groupName))
-            {
-                List<T> fw = _watcher[groupName];
-
-                foreach (var w in fw)
-                {
-                    w.EnableRaisingEvents = false;
-                }
-                _watcher.Remove(groupName);
-            }            
+            _watcher.Clear();
         }
 
         private void W_Changed(object sender, string entityName)
         {
-            OnChange(((IWatcherProvider)sender).Tag, entityName);
+            OnChange(entityName);
         }
     }
 }

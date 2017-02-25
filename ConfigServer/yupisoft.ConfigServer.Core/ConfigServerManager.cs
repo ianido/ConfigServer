@@ -11,47 +11,73 @@ namespace yupisoft.ConfigServer.Core
     {
         private static object objlock = new object();
 
-        private ILogger _logger;
-        private IStoreProvider _store;
-        private JToken _token;
+        private List<ConfigServerTenant> _tenants;
 
-        public ConfigServerManager(IStoreProvider store, ILogger<ConfigServerManager> logger)
-        {
-            _logger = logger;
-            _store = store;
-            _store.Change += _store_Change;
-            _token = _store.Get(_store.StartEntityName);            
-        }
 
-        private void _store_Change(JToken newToken)
+        public ConfigServerManager(List<ConfigServerTenant> tenants)
         {
-            _token = newToken;
-        }
-
-        public JToken Get(string path)
-        {
-            return Get<JToken>(path);
-        }
-
-        public T Get<T>(string path)
-        {
-            lock (objlock)
+            _tenants = tenants;
+            foreach (var tenant in _tenants)
             {
-                JToken selToken = _token.SelectToken(path);
+                tenant.Store.Change += _store_Change;
+                tenant.Token = tenant.Store.Get(tenant.Store.StartEntityName);
+            }          
+        }
+
+        private void _store_Change(IStoreProvider sender, JToken newToken)
+        {
+            foreach (var tenant in _tenants)
+            {
+                if (tenant.Store.StartEntityName == sender.StartEntityName)
+                    tenant.Token = newToken;
+            }            
+        }
+
+        public JToken Get(string path, int tenantId)
+        {
+            return Get<JToken>(path, tenantId);
+        }
+
+        public T Get<T>(string path, int tenantId)
+        {
+            JToken token = null;
+
+            foreach (var tenant in _tenants)
+            {
+                if (tenant.TenantConfig.Id == tenantId)
+                    token = tenant.Token;
+            }
+            if (token == null) throw new Exception("Tenant: " + tenantId + " not found.");
+
+            lock (token)
+            {
+                JToken selToken = token.SelectToken(path);
                 if (selToken == null) return default(T);
                 var result = selToken.ToObject<T>();
                 return result;
             }
         }
 
-        public bool Set(string path, JToken token)
+        public bool Set(string path, int tenantId, JToken newToken)
         {
-            lock (objlock)
+            JToken token = null;
+            IStoreProvider store = null;
+
+            foreach (var tenant in _tenants)
+            {
+                if (tenant.TenantConfig.Id == tenantId)
+                {
+                    token = tenant.Token;
+                    store = tenant.Store;
+                }
+            }
+            if (token == null) throw new Exception("Tenant: " + tenantId + " not found.");
+            lock (token)
             {
                 JToken selToken = token.SelectToken(path);
                 if (selToken == null) return false;
-                selToken.Replace(token);
-                _store.Set(token, _store.StartEntityName); //Save Modified Store
+                selToken.Replace(newToken);
+                store.Set(token, store.StartEntityName); //Save Modified Store
             }
             return true;
         }

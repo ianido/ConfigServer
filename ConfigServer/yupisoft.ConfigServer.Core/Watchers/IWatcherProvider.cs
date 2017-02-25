@@ -10,7 +10,7 @@ namespace yupisoft.ConfigServer.Core
 
     public interface IWatcherProvider 
     {
-        string Tag { get; set; }
+        string Connection { get; set; }
 
         string EntityName { get; set; }
 

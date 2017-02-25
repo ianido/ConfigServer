@@ -12,11 +12,12 @@ namespace ConsoleApp1
     {
         public static void Main(string[] args)
         {
-            ConfigService cfg = new ConfigService("http://localhost:27764", "");
+            
 
             string text = "";
             do
             {
+                ConfigService cfg = new ConfigService("http://localhost:27764", "");
                 dynamic obj = cfg.Get<dynamic>("configuration");
                 string content = JsonConvert.SerializeObject(obj, Formatting.Indented);
 

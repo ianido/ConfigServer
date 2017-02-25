@@ -20,7 +20,7 @@
       "commandName": "Project",
       "commandLineArgs": "--debug",
       "launchBrowser": true,
-      "launchUrl": "http://localhost:5000/api/Config/test",
+      "launchUrl": "http://localhost:8000/api/Config/test",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

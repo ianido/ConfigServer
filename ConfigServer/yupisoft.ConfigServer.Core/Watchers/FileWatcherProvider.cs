@@ -10,12 +10,12 @@ namespace yupisoft.ConfigServer.Core.Watchers
 
     public class FileWatcherProvider : IWatcherProvider
     {
-        private string _tag;
+        private string _connection;
         private string _entityName;
         private bool _enableRaisingEvents;
         private DateTime _lastWriteDate;
 
-        public string Tag { get { return _tag; } set { _tag = value; } }
+        public string Connection { get { return _connection; } set { _connection = value; } }
 
         public string EntityName { get { return _entityName; } set { _entityName = value; } }
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace yupisoft.ConfigServer.Core
 {
-    public delegate void StoreChanged(JToken newToken);
+    public delegate void StoreChanged(IStoreProvider sender, JToken newToken);
     public interface IStoreProvider 
     {
         event StoreChanged Change;

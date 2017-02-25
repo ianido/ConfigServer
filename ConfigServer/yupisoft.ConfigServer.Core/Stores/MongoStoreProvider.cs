@@ -45,7 +45,12 @@ namespace yupisoft.ConfigServer.Core.Stores
             var _db = _client.GetDatabase(MongoDatabase);
             if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
             var collection = _db.GetCollection<BsonDocument>(entityName);
-            if (collection == null) throw new Exception("No collection named: " + entityName);
+            if (collection == null)
+            {
+                // Create Collection if not exist
+                _db.CreateCollection(entityName);
+                collection = _db.GetCollection<BsonDocument>(entityName);
+            }
             JObject obj = new JObject();
             obj["created"] = DateTime.UtcNow;
             obj["node"] = node;
@@ -58,7 +63,7 @@ namespace yupisoft.ConfigServer.Core.Stores
             var _db = _client.GetDatabase(MongoDatabase);
             if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
             var collection = _db.GetCollection<BsonDocument>(entityName);
-            if (collection == null) throw new Exception("No collection named: " + entityName);
+            if (collection == null) return null;
             var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
             var content = v.First()["node"].ToJson();
             if (content == null) content = "{}";

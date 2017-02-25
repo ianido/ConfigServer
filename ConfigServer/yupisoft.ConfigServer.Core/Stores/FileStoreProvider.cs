@@ -15,9 +15,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         private IConfigWatcher _watcher;
         private string FILEDATEFORMAT = "yyyy-MM-dd-hh-mm-ss";
         private string _entityName;
-
         public event StoreChanged Change;
-
         public string FilePath { get; private set; }
         public string StartEntityName
         {
@@ -33,16 +31,11 @@ namespace yupisoft.ConfigServer.Core.Stores
             _watcher = watcher;
             _watcher.Change += _watcher_Change;            
         }
-
-        private void _watcher_Change(string groupName, string fileName)
+        private void _watcher_Change(object sender, string fileName)
         {
-            if (groupName == StartEntityName)
-            {
-                var token = Get(StartEntityName);
-                Change(token);
-            }
+            var token = Get(StartEntityName);
+            Change(this, token);
         }
-
         public JToken Get(string entityName)
         {            
             string[] filesInFolder = Directory.GetFiles(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_*" + Path.GetExtension(entityName));
@@ -50,7 +43,6 @@ namespace yupisoft.ConfigServer.Core.Stores
                 filesInFolder = Directory.GetFiles(FilePath, Path.GetFileName(entityName));
             Dictionary<string, DateTime> arr = new Dictionary<string, DateTime>();
             if (filesInFolder.Length == 0) return null; 
-
 
             foreach (var file in filesInFolder)
             {
@@ -67,7 +59,7 @@ namespace yupisoft.ConfigServer.Core.Stores
             {
                 string fullFilePath = mostRecent.Key;
                 content = File.ReadAllText(fullFilePath);
-                _watcher.AddToGroupWatcher(this.StartEntityName, fullFilePath);
+                _watcher.AddToWatcher(fullFilePath);
             }          
             JToken token = JsonProcessor.Process(content, this, _watcher);
             
