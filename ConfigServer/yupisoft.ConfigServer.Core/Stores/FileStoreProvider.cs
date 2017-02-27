@@ -72,7 +72,15 @@ namespace yupisoft.ConfigServer.Core.Stores
         public void Set(JToken node, string entityName)
         {
             string content = JsonConvert.SerializeObject(node);
+            /*
+             * Estrategia de Saving Node
 
+1 - Get Raw Node and Save Entity as Is
+2 - Get Calculated Node And When I attempt to Save:
+  - Get Node Map
+  - For every Node I have: EntityName, OriginalValue
+
+             */
             lock (FilePath)
             {
                 string filePath = Path.Combine(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_" + DateTime.UtcNow.ToString(FILEDATEFORMAT) + Path.GetExtension(entityName));
