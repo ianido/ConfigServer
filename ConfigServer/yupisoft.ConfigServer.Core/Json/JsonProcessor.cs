@@ -138,8 +138,10 @@ namespace yupisoft.ConfigServer.Core.Json
         private static bool Nav(JToken tree, JToken token, IStoreProvider storeProvider, IConfigWatcher watcher)
         {
             bool result = false;
+
             if (token.Type == JTokenType.String)
             {
+                
                 string value = token.Value<string>() ?? "";
                 if (value.StartsWith("*"))
                 {
@@ -216,5 +218,6 @@ namespace yupisoft.ConfigServer.Core.Json
             watcher.StartMonitoring();
             return obj;            
         }
+
     }
 }

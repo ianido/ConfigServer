@@ -72,10 +72,14 @@ namespace yupisoft.ConfigServer.Core.Stores
         public void Set(JToken node, string entityName)
         {
             string content = JsonConvert.SerializeObject(node);
+
             lock (FilePath)
             {
-                File.WriteAllText(entityName + DateTime.UtcNow.ToString(FILEDATEFORMAT), content);
-            }            
+                string filePath = Path.Combine(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_" + DateTime.UtcNow.ToString(FILEDATEFORMAT) + Path.GetExtension(entityName));
+                File.WriteAllText(filePath, content);
+                _watcher.ClearWatcher();
+            }
+            Get(entityName);
         }
     }
 }
