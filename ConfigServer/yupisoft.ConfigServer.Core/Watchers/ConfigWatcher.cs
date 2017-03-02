@@ -95,5 +95,10 @@ namespace yupisoft.ConfigServer.Core
         {
             OnChange(entityName);
         }
+
+        public bool IsWatching(string entityName)
+        {
+            return (_watcher.FirstOrDefault(f => f.EntityName == entityName) != null);
+        }
     }
 }

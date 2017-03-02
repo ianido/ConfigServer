@@ -20,6 +20,7 @@ namespace yupisoft.ConfigServer.Core
             new ConfigureFromConfigurationOptions<TenantsConfigSection>(section).Configure(settings);
 
             services.AddSingleton(imp => new ConfigServerTenants(settings, imp));
+            services.AddSingleton(imp => new ConfigServerTenants(settings, imp));
             services.AddSingleton(imp => new ConfigServerManager(imp.GetService<ConfigServerTenants>()));
 
             return services;

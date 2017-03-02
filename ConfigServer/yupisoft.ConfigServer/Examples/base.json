@@ -1,7 +1,11 @@
 ﻿{
   "base": {
     "field0": "value0",
-    "fieldbase": "valueC"
+    "fieldbase": "valueC",
+    "subfield": {
+      "sub1": "v1",
+      "sub2": "v2"
+      }
     }
 }
 

@@ -135,10 +135,10 @@ namespace yupisoft.ConfigServer.Core.Json
                     break;
             }
         }
-        private static bool Nav(JToken tree, JToken token, IStoreProvider storeProvider, IConfigWatcher watcher)
+
+        private static bool Nav(JToken tree, JToken token, string entityName, IStoreProvider storeProvider)
         {
             bool result = false;
-
             if (token.Type == JTokenType.String)
             {
                 
@@ -201,21 +201,21 @@ namespace yupisoft.ConfigServer.Core.Json
 
             foreach (var o in token.ToArray())
             {
-                if (o is JToken) result = result || Nav(tree, o, storeProvider, watcher);
+                if (o is JToken) result = result || Nav(tree, o, entityName, storeProvider);
             }
             return result;
         }
-        private static void Process(JToken token, IStoreProvider storeProvider, IConfigWatcher watcher)
+
+        private static void Process(JToken token, string entityName, IStoreProvider storeProvider)
         {
-            while (Nav(token, token, storeProvider, watcher)) { };
+            while (Nav(token, token, entityName, storeProvider)) { };
         }
 
-        public static JToken Process(string content, IStoreProvider storeProvider, IConfigWatcher watcher)
+        public static JToken Process(string content, string entityName, IStoreProvider storeProvider)
         {
-            watcher.StopMonitoring();
             var obj = JsonConvert.DeserializeObject<JToken>(content);
-            Process(obj, storeProvider, watcher);
-            watcher.StartMonitoring();
+            Process(obj, entityName, storeProvider);
+            
             return obj;            
         }
 

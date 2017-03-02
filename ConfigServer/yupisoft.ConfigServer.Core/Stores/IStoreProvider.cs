@@ -9,9 +9,11 @@ namespace yupisoft.ConfigServer.Core
     public delegate void StoreChanged(IStoreProvider sender, JToken newToken);
     public interface IStoreProvider 
     {
+        IConfigWatcher Watcher { get; }
         event StoreChanged Change;
         string StartEntityName { get; }
         JToken Get(string entityName);
+        JToken GetRaw(string entityName);
         void Set(JToken node, string entityName);
     }
 }

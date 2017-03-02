@@ -16,6 +16,7 @@ namespace yupisoft.ConfigServer.Core
         public TenantConfigSection TenantConfig { get; set; }
         public IStoreProvider Store { get; set; }
         public JToken Token { get; set; }
+
         public ConfigServerTenant(TenantConfigSection tenantConfig, IServiceProvider serviceProvider)
         {
 

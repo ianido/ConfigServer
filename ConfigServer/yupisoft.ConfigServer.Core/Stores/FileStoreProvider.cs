@@ -15,11 +15,13 @@ namespace yupisoft.ConfigServer.Core.Stores
     {
         private IConfigWatcher _watcher;
         private ILogger _logger;
-
         private string FILEDATEFORMAT = "yyyy-MM-dd-hh-mm-ss";
         private string _entityName;
+
         public event StoreChanged Change;
+
         public string FilePath { get; private set; }
+
         public string StartEntityName
         {
             get
@@ -27,6 +29,9 @@ namespace yupisoft.ConfigServer.Core.Stores
                 return _entityName;
             }
         }
+
+        public IConfigWatcher Watcher { get{ return _watcher; } }
+
         public FileStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
         {
             FilePath = connectionString;
@@ -35,18 +40,20 @@ namespace yupisoft.ConfigServer.Core.Stores
             _watcher = watcher;
             _watcher.Change += _watcher_Change;
         }
+
         private void _watcher_Change(object sender, string fileName)
         {
             var token = Get(StartEntityName);
             Change(this, token);
         }
-        public JToken Get(string entityName)
-        {            
+
+        private string GetContent(string entityName)
+        {
             string[] filesInFolder = Directory.GetFiles(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_*" + Path.GetExtension(entityName));
             if (filesInFolder.Length == 0)
                 filesInFolder = Directory.GetFiles(FilePath, Path.GetFileName(entityName));
             Dictionary<string, DateTime> arr = new Dictionary<string, DateTime>();
-            if (filesInFolder.Length == 0) return null; 
+            if (filesInFolder.Length == 0) return null;
 
             foreach (var file in filesInFolder)
             {
@@ -59,28 +66,34 @@ namespace yupisoft.ConfigServer.Core.Stores
             var mostRecent = arr.Last();
 
             string content = "";
+            string fullFilePath = mostRecent.Key;
             lock (FilePath)
             {
-                string fullFilePath = mostRecent.Key;
                 content = File.ReadAllText(fullFilePath);
                 _watcher.AddToWatcher(fullFilePath);
-            }          
-            JToken token = JsonProcessor.Process(content, this, _watcher);
-            
+            }
+            return content;
+        }
+
+
+
+        public JToken Get(string entityName)
+        {
+            string content = GetContent(entityName);
+
+            JToken token = JsonProcessor.Process(content, entityName, this);            
             return token;
         }
+
+        public JToken GetRaw(string entityName)
+        {
+            string content = GetContent(entityName);
+            return JsonConvert.DeserializeObject<JToken>(content);
+        }
+
         public void Set(JToken node, string entityName)
         {
             string content = JsonConvert.SerializeObject(node);
-            /*
-             * Estrategia de Saving Node
-
-1 - Get Raw Node and Save Entity as Is
-2 - Get Calculated Node And When I attempt to Save:
-  - Get Node Map
-  - For every Node I have: EntityName, OriginalValue
-
-             */
             lock (FilePath)
             {
                 string filePath = Path.Combine(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_" + DateTime.UtcNow.ToString(FILEDATEFORMAT) + Path.GetExtension(entityName));
@@ -88,6 +101,7 @@ namespace yupisoft.ConfigServer.Core.Stores
                 _watcher.ClearWatcher();
             }
             Get(entityName);
+
         }
     }
 }

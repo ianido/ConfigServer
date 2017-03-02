@@ -81,7 +81,9 @@ namespace yupisoft.ConfigServer.Client
 
         public T Get<T>(string path)
         {
-            var result = JsonConvert.DeserializeObject<ApiSingleResult<T>>(GetNode(path));
+            var node = GetNode(path);
+            if (node == null) return default(T);
+            var result = JsonConvert.DeserializeObject<ApiSingleResult<T>>(node);
             if (result == null) return default(T);
             return result.Item;
         }

@@ -8,14 +8,13 @@
       "$inherits": "*configuration.baseobject",
       "field0": "value0XY",
       "field1": "value1XY",
-      "field2": "value2XY"
+      "field2": "value2XY",
+      "array": [1,2,3]
     },
     "baseobject": {
-      "$inherits": "*configuration.base",
       "field0": "value0X",
-      "field1": "value1"
+      "fieldB": "value1"
     }
-
   }
 }
 		

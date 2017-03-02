@@ -5,6 +5,8 @@
     public interface IConfigWatcher
     {
         event ChangeDetection Change;
+
+        bool IsWatching(string entityName);
         void AddToWatcher(string[] entityNames);
         void AddToWatcher(string entityName);
         void ClearWatcher();

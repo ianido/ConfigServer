@@ -20,6 +20,9 @@ namespace yupisoft.ConfigServer.Core.Stores
         public event StoreChanged Change;
 
         public string ConnectionString { get; private set; }
+
+        public IConfigWatcher Watcher { get { return _watcher; } }
+
         public string StartEntityName
         {
             get
@@ -32,6 +35,7 @@ namespace yupisoft.ConfigServer.Core.Stores
                 _entityName = rgx.Replace(value, "");
             }
         }
+
         public SqlServerStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
         {
             ConnectionString = connectionString;
@@ -39,6 +43,7 @@ namespace yupisoft.ConfigServer.Core.Stores
             _watcher = watcher;
             _logger = logger;
     }
+
         /// <summary>
         /// Node Path should include the UPDATE QUERY with @node parameter: UPDATE Table1 set node = @node where key = key1
         /// </summary>
@@ -69,13 +74,8 @@ namespace yupisoft.ConfigServer.Core.Stores
                     conn.Close();
             }
         }
-        /// <summary>
-        /// Connect to the proper database and return the base node processed.
-        /// </summary>
-        /// <param name="connectionString">connection String to SQL Server database</param>
-        /// <param name="baseSource">Singled Result Query to obtain the basenode; SELECT node From Table where key1 = key</param>
-        /// <returns></returns>
-        public JToken Get(string entityName)
+
+        private string GetContent(string entityName)
         {
             SqlConnection conn = new SqlConnection(ConnectionString);
             SqlCommand cmdExist = new SqlCommand("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @entity", conn);
@@ -89,10 +89,10 @@ namespace yupisoft.ConfigServer.Core.Stores
                     content = "{}";
                 else
                     content = (string)cmd.ExecuteScalar();
-                JToken token = JsonProcessor.Process(content, this, _watcher);
-                return token;
+                _watcher.AddToWatcher(entityName);                
+                return content;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
                 return null;
@@ -103,5 +103,26 @@ namespace yupisoft.ConfigServer.Core.Stores
                     conn.Close();
             }
         }
+
+        public JToken GetRaw(string entityName)
+        {
+            var content = GetContent(entityName);
+            var token = JsonConvert.DeserializeObject<JToken>(content);
+            return token;
+        }
+
+        /// <summary>
+        /// Connect to the proper database and return the base node processed.
+        /// </summary>
+        /// <param name="connectionString">connection String to SQL Server database</param>
+        /// <param name="baseSource">Singled Result Query to obtain the basenode; SELECT node From Table where key1 = key</param>
+        /// <returns></returns>
+        public JToken Get(string entityName)
+        {
+            var content = GetContent(entityName);
+            JToken token = JsonProcessor.Process(content, entityName, this);
+            return token;            
+        }
+
     }
 }

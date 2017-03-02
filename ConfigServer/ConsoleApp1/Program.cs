@@ -29,7 +29,7 @@ namespace ConsoleApp1
 
                 if (text == "Y")
                 {
-                    obj.culo = "sucio";
+                    obj.baseobject.subfield.sub1 = "sucio";
                     cfg.Set<dynamic>("configuration", obj);
                     Console.WriteLine("... MODIFIED ...");
                     Console.WriteLine("=============================");

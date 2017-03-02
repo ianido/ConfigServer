@@ -27,7 +27,7 @@ namespace yupisoft.ConfigServer.Controllers
             ApiActionResult result = new ApiActionResult();
             try
             {
-                bool success = _cfg.Set(node.Path, tenantId, node.Value);
+                bool success = _cfg.Set(node, tenantId);
                 if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
                     else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
                 _logger.LogTrace("");
@@ -60,6 +60,27 @@ namespace yupisoft.ConfigServer.Controllers
             }
             return result;
 
+        }
+
+        [HttpGet]
+        [Route("api/{tenantId}/[controller]/get/{path}")]
+        public IActionResult GetRaw(int tenantId, string path)
+        {
+            ApiSingleResult<object> result = new ApiSingleResult<object>();
+            try
+            {
+                result.Item = _cfg.Get(path, tenantId);
+                if (result.Item == null) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.NotFound });
+                else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
+
+                _logger.LogTrace("");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogTrace("Error:" + ex.ToString());
+                result.messages.Add(new ApiResultMessage() { Message = ex.Message, MessageType = ApiResultMessage.MessageTypeValues.Error });
+            }
+            return result;
         }
 
         [HttpGet]

@@ -8,6 +8,7 @@ using MongoDB.Bson;
 using MongoDB.Driver.Builders;
 using yupisoft.ConfigServer.Core.Json;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace yupisoft.ConfigServer.Core.Stores
 {
@@ -18,10 +19,28 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         private string _entityName;
 
+        private string GetContent(string entityName)
+        {
+            var _client = new MongoClient(MongoConnection);
+            var _db = _client.GetDatabase(MongoDatabase);
+            if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
+            var collection = _db.GetCollection<BsonDocument>(entityName);
+            if (collection == null) return null;
+            var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
+            var content = v.FirstOrDefault()?["node"]?.ToJson();
+            if (content == null) content = "{}";
+            _watcher.AddToWatcher(entityName);
+            return content;
+        }
+
         public event StoreChanged Change;
 
+        public IConfigWatcher Watcher { get { return _watcher; } }
+
         public string MongoConnection { get; private set; }
+
         public string MongoDatabase { get; private set; }
+
         public string StartEntityName
         {
             get
@@ -29,6 +48,7 @@ namespace yupisoft.ConfigServer.Core.Stores
                 return _entityName;
             }
         }
+
         /// <summary>
         /// 
         /// </summary>
@@ -42,8 +62,8 @@ namespace yupisoft.ConfigServer.Core.Stores
             _entityName = startEntityName;
             _watcher = watcher;
             _logger = logger;
-
         }
+
         public void Set(JToken node, string entityName)
         {
             var _client = new MongoClient(MongoConnection);
@@ -62,17 +82,18 @@ namespace yupisoft.ConfigServer.Core.Stores
             var toInsert = obj.ToBsonDocument();
             collection.InsertOne(toInsert);
         }
+
         public JToken Get(string entityName)
         {
-            var _client = new MongoClient(MongoConnection);
-            var _db = _client.GetDatabase(MongoDatabase);
-            if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
-            var collection = _db.GetCollection<BsonDocument>(entityName);
-            if (collection == null) return null;
-            var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
-            var content = v.FirstOrDefault()?["node"]?.ToJson();
-            if (content == null) content = "{}";
-            var token = JsonProcessor.Process(content, this, _watcher);
+            var content = GetContent(entityName);
+            var token = JsonProcessor.Process(content, entityName, this);
+            return token;
+        }
+
+        public JToken GetRaw(string entityName)
+        {
+            var content = GetContent(entityName);
+            var token =  JsonConvert.DeserializeObject<JToken>(content);
             return token;
         }
     }

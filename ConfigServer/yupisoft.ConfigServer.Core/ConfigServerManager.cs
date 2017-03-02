@@ -13,15 +13,28 @@ namespace yupisoft.ConfigServer.Core
 
         private ConfigServerTenants _tenants;
 
-
         public ConfigServerManager(ConfigServerTenants tenants)
         {
             _tenants = tenants;
             foreach (var tenant in _tenants.Tenants)
             {
+                tenant.Store.Watcher.StopMonitoring();
+
                 tenant.Store.Change += _store_Change;
                 tenant.Token = tenant.Store.Get(tenant.Store.StartEntityName);
+
+                tenant.Store.Watcher.StartMonitoring();
             }
+        }
+
+        private ConfigServerTenant GetTenant(int tenantId)
+        {
+            foreach (var tenant in _tenants.Tenants)
+            {
+                if (tenant.TenantConfig.Id == tenantId)
+                    return tenant;
+            }
+            return null;
         }
 
         private void _store_Change(IStoreProvider sender, JToken newToken)
@@ -33,6 +46,21 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
+        public TNode GetRaw(string path, string entityName, int tenantId)
+        {
+            var tenant = GetTenant(tenantId);
+            if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
+            if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
+
+            lock (tenant.Token)
+            {
+                JToken selToken = tenant.Store.GetRaw(entityName);
+                if (selToken == null) return new TNode(path, "{}", entityName);
+                var result = selToken.ToObject<JToken>();
+                return new TNode(path, result, entityName);
+            }
+        }
+
         public JToken Get(string path, int tenantId)
         {
             return Get<JToken>(path, tenantId);
@@ -40,55 +68,37 @@ namespace yupisoft.ConfigServer.Core
 
         public T Get<T>(string path, int tenantId)
         {
-            JToken token = null;
-            bool found = false;
+            var tenant = GetTenant(tenantId);
+            if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
+            if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            foreach (var tenant in _tenants.Tenants)
+            lock (tenant.Token)
             {
-                if (tenant.TenantConfig.Id == tenantId)
-                {
-                    token = tenant.Token;
-                    found = true;
-                }
-            }
-
-            if (!found) throw new Exception("Tenant: " + tenantId + " not found.");
-            if (token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
-
-            lock (token)
-            {
-                JToken selToken = token.SelectToken(path);
+                JToken selToken = tenant.Token.SelectToken(path);
                 if (selToken == null) return default(T);
                 var result = selToken.ToObject<T>();
                 return result;
             }
         }
 
-        public bool Set(string path, int tenantId, JToken newToken)
+        public bool Set(TNode newToken, int tenantId)
         {
-            JToken token = null;
-            IStoreProvider store = null;
-            bool found = false;
+            var tenant = GetTenant(tenantId);
+            if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
+            if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-
-            foreach (var tenant in _tenants.Tenants)
+            lock (tenant.Token)
             {
-                if (tenant.TenantConfig.Id == tenantId)
+                if (tenant.Store.Watcher.IsWatching(newToken.Entity))
                 {
-                    token = tenant.Token;
-                    store = tenant.Store;
-                    found = true;
+                    JToken rawToken = tenant.Store.GetRaw(newToken.Entity);
+                    JToken selToken = rawToken.SelectToken(newToken.Path);
+                    if (selToken == null) return false;
+                    selToken.Replace(newToken.Value);
+                    tenant.Store.Set(rawToken, newToken.Entity);
                 }
-            }
-            if (!found) throw new Exception("Tenant: " + tenantId + " not found.");
-            if (token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
-
-            lock (token)
-            {
-                JToken selToken = token.SelectToken(path);
-                if (selToken == null) return false;
-                selToken.Replace(newToken);
-                store.Set(token, store.StartEntityName); //Save Modified Store
+                else
+                    throw new Exception("Unauthorized Entity: "+ newToken.Entity);
             }
             return true;
         }
