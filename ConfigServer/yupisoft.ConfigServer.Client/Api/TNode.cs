@@ -7,5 +7,11 @@ namespace yupisoft.ConfigServer.Client
     {
         public string Path { get; set; }
         public T Value { get; set; }
+        public string Entity { get; set; }
+    }
+
+    public class TNode : TNode<JToken>
+    {
+
     }
 }

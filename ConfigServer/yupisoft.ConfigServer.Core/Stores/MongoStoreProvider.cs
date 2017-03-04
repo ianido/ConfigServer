@@ -29,7 +29,7 @@ namespace yupisoft.ConfigServer.Core.Stores
             var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
             var content = v.FirstOrDefault()?["node"]?.ToJson();
             if (content == null) content = "{}";
-            _watcher.AddToWatcher(entityName);
+            _watcher.AddToWatcher(entityName, MongoDatabase);
             return content;
         }
 
@@ -61,7 +61,13 @@ namespace yupisoft.ConfigServer.Core.Stores
             MongoDatabase = connectionStringParts[1];
             _entityName = startEntityName;
             _watcher = watcher;
+            _watcher.Change += _watcher_Change;
             _logger = logger;
+        }
+
+        private void _watcher_Change(object sender, string fileName)
+        {
+            Change(this, fileName);
         }
 
         public void Set(JToken node, string entityName)

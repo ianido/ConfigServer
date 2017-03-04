@@ -26,7 +26,7 @@ namespace yupisoft.ConfigServer.Core.Watchers
         public event EntityChangeEventHandler Changed;
 
         public void CheckForChange() {
-            FileInfo fi = new FileInfo(EntityName);
+            FileInfo fi = new FileInfo(Path.Combine(_connection,EntityName));
             if (fi.LastWriteTimeUtc != LastWriteDate)
             {
                 EnableRaisingEvents = false;
@@ -34,6 +34,6 @@ namespace yupisoft.ConfigServer.Core.Watchers
                 LastWriteDate = fi.LastWriteTimeUtc;
                 EnableRaisingEvents = true;
             }
-        }        
+        }
     }
 }

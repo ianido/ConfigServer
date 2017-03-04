@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Net;
 using System.Net.Http;
@@ -62,16 +63,26 @@ namespace yupisoft.ConfigServer.Client
             return json;
         }
 
-        private string SaveNode<T>(string path, T obj)
+        private string GetRawNode(string path, string entity)
         {
-            TNode<T> node = new TNode<T>() { Path = path, Value = obj };
+            if (string.IsNullOrEmpty(entity)) entity = "@default";
+            var message = new HttpRequestMessage();
+            message.Method = HttpMethod.Get;
+            message.RequestUri = new Uri(_serveraddr + "api/" + _tenantId + "/config/node/" + entity + "/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
+            var response = client.SendAsync(message).Result;
+            string json = response.Content.ReadAsStringAsync().Result;
+            return json;
+        }
+        
+        private string SaveNode<T>(T node)
+        {
             string str = JsonConvert.SerializeObject(node);
             StringContent content = new StringContent(str, Encoding.UTF8, "application/json");
 
             var message = new HttpRequestMessage();
             message.Method = HttpMethod.Post;
             message.Content = content;
-            message.RequestUri = new Uri(_serveraddr + "api/"+_tenantId+"/config/set");
+            message.RequestUri = new Uri(_serveraddr + "api/" + _tenantId + "/config/set");
             var response = client.SendAsync(message).Result;
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
@@ -79,21 +90,35 @@ namespace yupisoft.ConfigServer.Client
 
         #endregion
 
-        public T Get<T>(string path)
+        public T Get<T>(string path, string entity = null)
         {
-            var node = GetNode(path);
-            if (node == null) return default(T);
-            var result = JsonConvert.DeserializeObject<ApiSingleResult<T>>(node);
+            string content = null;
+            if (typeof(T).Name.StartsWith("TNode") && (typeof(T).Namespace == "yupisoft.ConfigServer.Client"))
+                content = GetRawNode(path, entity);
+            else 
+                content = GetNode(path);
+            if (content == null) return default(T);
+            var result = JsonConvert.DeserializeObject<ApiSingleResult<T>>(content);
             if (result == null) return default(T);
             return result.Item;
         }
-        public bool Set<T>(string path, T obj)
+
+        public bool Set(TNode node)
         {
-            var node = SaveNode<T>(path, obj);
-            var result = JsonConvert.DeserializeObject<ApiActionResult>(node);
+            var content = SaveNode<TNode>(node);
+            var result = JsonConvert.DeserializeObject<ApiActionResult>(content);
             if (result == null) return false;
             return result.Result == ApiResultMessage.MessageTypeValues.Success;
         }
 
+        public bool Set<T>(TNode<T> node)
+        {
+            var content = SaveNode<TNode<T>>(node);
+            var result = JsonConvert.DeserializeObject<ApiActionResult>(content);
+            if (result == null) return false;
+            return result.Result == ApiResultMessage.MessageTypeValues.Success;
+        }
+
+        
     }
 }

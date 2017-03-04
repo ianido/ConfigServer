@@ -18,12 +18,17 @@ namespace yupisoft.ConfigServer.Core
             _tenants = tenants;
             foreach (var tenant in _tenants.Tenants)
             {
-                tenant.Store.Watcher.StopMonitoring();
+                tenant.Store.Change += Store_Change;
+                tenant.Load();
+            }
+        }
 
-                tenant.Store.Change += _store_Change;
-                tenant.Token = tenant.Store.Get(tenant.Store.StartEntityName);
-
-                tenant.Store.Watcher.StartMonitoring();
+        private void Store_Change(IStoreProvider sender, string entityName)
+        {
+            foreach (var tenant in _tenants.Tenants)
+            {
+                if (tenant.Store.StartEntityName == sender.StartEntityName)
+                    tenant.Load();
             }
         }
 
@@ -37,28 +42,20 @@ namespace yupisoft.ConfigServer.Core
             return null;
         }
 
-        private void _store_Change(IStoreProvider sender, JToken newToken)
-        {
-            foreach (var tenant in _tenants.Tenants)
-            {
-                if (tenant.Store.StartEntityName == sender.StartEntityName)
-                    tenant.Token = newToken;
-            }
-        }
-
         public TNode GetRaw(string path, string entityName, int tenantId)
         {
             var tenant = GetTenant(tenantId);
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
-
-            lock (tenant.Token)
-            {
-                JToken selToken = tenant.Store.GetRaw(entityName);
+             
+            //lock (tenant.Token)
+            //{
+                if (entityName == "@default") entityName = tenant.Store.StartEntityName;
+                JToken selToken = tenant.RawTokens[entityName].SelectToken(path);
                 if (selToken == null) return new TNode(path, "{}", entityName);
                 var result = selToken.ToObject<JToken>();
                 return new TNode(path, result, entityName);
-            }
+            //}
         }
 
         public JToken Get(string path, int tenantId)
@@ -72,13 +69,13 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            lock (tenant.Token)
-            {
+            //lock (tenant.Token)
+            //{
                 JToken selToken = tenant.Token.SelectToken(path);
                 if (selToken == null) return default(T);
                 var result = selToken.ToObject<T>();
                 return result;
-            }
+            //}
         }
 
         public bool Set(TNode newToken, int tenantId)
@@ -87,8 +84,8 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            lock (tenant.Token)
-            {
+            //lock (tenant.Token)
+            //{
                 if (tenant.Store.Watcher.IsWatching(newToken.Entity))
                 {
                     JToken rawToken = tenant.Store.GetRaw(newToken.Entity);
@@ -99,7 +96,7 @@ namespace yupisoft.ConfigServer.Core
                 }
                 else
                     throw new Exception("Unauthorized Entity: "+ newToken.Entity);
-            }
+            //}
             return true;
         }
     }

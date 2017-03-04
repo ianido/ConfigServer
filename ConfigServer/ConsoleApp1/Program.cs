@@ -12,12 +12,16 @@ namespace ConsoleApp1
     {
         public static void Main(string[] args)
         {
-            
+            Console.WriteLine("Press Enter to start");
+            Console.ReadLine();
 
             string text = "";
             do
             {
-                ConfigService cfg = new ConfigService("http://localhost:27764", "",1);
+                Console.WriteLine("Creating client...");
+                //ConfigService cfg = new ConfigService("http://localhost:27764", "",1);
+                ConfigService cfg = new ConfigService("http://localhost:8000", "", 1);
+                Console.WriteLine("Requesting Path: Configuration");
                 dynamic obj = cfg.Get<dynamic>("configuration");
                 string content = JsonConvert.SerializeObject(obj, Formatting.Indented);
 
@@ -25,12 +29,12 @@ namespace ConsoleApp1
                 Console.WriteLine("=============================");
                 Console.WriteLine("Enter 'X' to Exit, Y to modify an element");
                 text = Console.ReadLine();
-
-
+                
                 if (text == "Y")
                 {
-                    obj.baseobject.subfield.sub1 = "sucio";
-                    cfg.Set<dynamic>("configuration", obj);
+                    var node = cfg.Get<TNode<dynamic>>("configuration");
+                    node.Value.baseobject.sub1 = "sucio";
+                    cfg.Set(node);
                     Console.WriteLine("... MODIFIED ...");
                     Console.WriteLine("=============================");
                     Console.WriteLine("Enter 'X' to Exit, Y to modify an element");

@@ -63,13 +63,13 @@ namespace yupisoft.ConfigServer.Controllers
         }
 
         [HttpGet]
-        [Route("api/{tenantId}/[controller]/get/{path}")]
-        public IActionResult GetRaw(int tenantId, string path)
+        [Route("api/{tenantId}/[controller]/node/{entity}/{path}")]
+        public IActionResult GetRaw(int tenantId, string entity, string path)
         {
             ApiSingleResult<object> result = new ApiSingleResult<object>();
             try
             {
-                result.Item = _cfg.Get(path, tenantId);
+                result.Item = _cfg.GetRaw(path, entity, tenantId);
                 if (result.Item == null) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.NotFound });
                 else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
 

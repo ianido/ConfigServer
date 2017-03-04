@@ -35,7 +35,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         public FileStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
         {
             FilePath = connectionString;
-            _entityName = startEntityName;
+            _entityName = startEntityName.Replace("/","\\");
             _logger = logger;
             _watcher = watcher;
             _watcher.Change += _watcher_Change;
@@ -43,12 +43,12 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         private void _watcher_Change(object sender, string fileName)
         {
-            var token = Get(StartEntityName);
-            Change(this, token);
+            Change(this, fileName);
         }
 
         private string GetContent(string entityName)
         {
+            entityName = entityName.Replace("/", "\\");
             string[] filesInFolder = Directory.GetFiles(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_*" + Path.GetExtension(entityName));
             if (filesInFolder.Length == 0)
                 filesInFolder = Directory.GetFiles(FilePath, Path.GetFileName(entityName));
@@ -70,15 +70,14 @@ namespace yupisoft.ConfigServer.Core.Stores
             lock (FilePath)
             {
                 content = File.ReadAllText(fullFilePath);
-                _watcher.AddToWatcher(fullFilePath);
+                _watcher.AddToWatcher(Path.GetFileName(fullFilePath), Path.GetDirectoryName(fullFilePath));
             }
             return content;
         }
 
-
-
         public JToken Get(string entityName)
         {
+            entityName = entityName.Replace("/", "\\");
             string content = GetContent(entityName);
 
             JToken token = JsonProcessor.Process(content, entityName, this);            
@@ -87,21 +86,20 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         public JToken GetRaw(string entityName)
         {
+            entityName = entityName.Replace("/", "\\");
             string content = GetContent(entityName);
             return JsonConvert.DeserializeObject<JToken>(content);
         }
 
         public void Set(JToken node, string entityName)
         {
+            entityName = entityName.Replace("/", "\\");
             string content = JsonConvert.SerializeObject(node);
             lock (FilePath)
             {
                 string filePath = Path.Combine(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_" + DateTime.UtcNow.ToString(FILEDATEFORMAT) + Path.GetExtension(entityName));
                 File.WriteAllText(filePath, content);
-                _watcher.ClearWatcher();
             }
-            Get(entityName);
-
         }
     }
 }

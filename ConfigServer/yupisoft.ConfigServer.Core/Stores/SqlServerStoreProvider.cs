@@ -42,7 +42,13 @@ namespace yupisoft.ConfigServer.Core.Stores
             _entityName = startEntityName;
             _watcher = watcher;
             _logger = logger;
+            _watcher.Change += _watcher_Change;
     }
+
+        private void _watcher_Change(object sender, string fileName)
+        {
+            Change(this, fileName);
+        }
 
         /// <summary>
         /// Node Path should include the UPDATE QUERY with @node parameter: UPDATE Table1 set node = @node where key = key1
@@ -89,7 +95,7 @@ namespace yupisoft.ConfigServer.Core.Stores
                     content = "{}";
                 else
                     content = (string)cmd.ExecuteScalar();
-                _watcher.AddToWatcher(entityName);                
+                _watcher.AddToWatcher(entityName, ConnectionString);                
                 return content;
             }
             catch (Exception ex)

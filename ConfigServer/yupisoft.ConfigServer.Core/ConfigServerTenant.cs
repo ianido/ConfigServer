@@ -14,12 +14,14 @@ namespace yupisoft.ConfigServer.Core
     public class ConfigServerTenant
     {
         public TenantConfigSection TenantConfig { get; set; }
-        public IStoreProvider Store { get; set; }
+        public IStoreProvider Store { get; }
+        public string StartEntityName { get { return Store.StartEntityName; } }
         public JToken Token { get; set; }
+        public Dictionary<string, JToken> RawTokens { get; set; }
 
         public ConfigServerTenant(TenantConfigSection tenantConfig, IServiceProvider serviceProvider)
         {
-
+            RawTokens = new Dictionary<string, JToken>();
             TenantConfig = tenantConfig;
             switch (tenantConfig.Store.Provider)
             {
@@ -49,6 +51,20 @@ namespace yupisoft.ConfigServer.Core
                     }
                     break;
             }
+        }
+
+        public void Load()
+        {
+            Store.Watcher.StopMonitoring();
+            Store.Watcher.ClearWatcher();
+            Token = Store.Get(StartEntityName);
+            foreach(var entity in Store.Watcher.GetEntities())
+            {
+                RawTokens = new Dictionary<string, JToken>();
+                var rawToken = Store.GetRaw(entity);
+                RawTokens.Add(entity, rawToken);
+            }
+            Store.Watcher.StartMonitoring();
         }
     }
 

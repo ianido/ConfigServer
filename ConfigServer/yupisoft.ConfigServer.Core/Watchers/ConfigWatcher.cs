@@ -24,9 +24,9 @@ namespace yupisoft.ConfigServer.Core
 
         public event ChangeDetection Change;
 
-        protected virtual void OnChange(string fileName)
+        protected virtual void OnChange(string entityName)
         {
-            if (Change != null) Change(this, fileName);
+            if (Change != null) Change(this, entityName);
         }
 
         public ConfigWatcher(ILogger<IConfigWatcher> logger)
@@ -66,19 +66,13 @@ namespace yupisoft.ConfigServer.Core
             _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS);
         }
 
-
-        public void AddToWatcher(string[] entityNames)
-        {
-            foreach (var filename in entityNames)
-                AddToWatcher(filename);
-        }
-
-        public void AddToWatcher(string entityName)
+        public void AddToWatcher(string entityName, string connection)
         {
             if (_watcher.FirstOrDefault(f => f.EntityName == entityName) == null)
             {
                 T w = new T();
-                w.LastWriteDate = new FileInfo(entityName).LastWriteTimeUtc;
+                w.LastWriteDate = new FileInfo(Path.Combine(connection, entityName)).LastWriteTimeUtc;
+                w.Connection = connection;
                 w.EntityName = entityName;
                 w.Changed += W_Changed;
                 w.EnableRaisingEvents = false;
@@ -99,6 +93,11 @@ namespace yupisoft.ConfigServer.Core
         public bool IsWatching(string entityName)
         {
             return (_watcher.FirstOrDefault(f => f.EntityName == entityName) != null);
+        }
+
+        public string[] GetEntities()
+        {
+            return _watcher.Select(t => t.EntityName).ToArray();
         }
     }
 }
