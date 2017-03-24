@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace yupisoft.ConfigServer.Core.Watchers
@@ -14,6 +15,7 @@ namespace yupisoft.ConfigServer.Core.Watchers
         private string _entityName;
         private bool _enableRaisingEvents;
         private DateTime _lastWriteDate;
+        private string CheckSum;
 
         public string Connection { get { return _connection; } set { _connection = value; } }
 
@@ -33,6 +35,16 @@ namespace yupisoft.ConfigServer.Core.Watchers
                 Changed(this, fi.FullName);
                 LastWriteDate = fi.LastWriteTimeUtc;
                 EnableRaisingEvents = true;
+            }
+        }
+
+        private static string GetChecksum(string file)
+        {
+            using (FileStream stream = File.OpenRead(file))
+            {
+                var sha = new HMACSHA256();
+                byte[] checksum = sha.ComputeHash(stream);
+                return BitConverter.ToString(checksum).Replace("-", String.Empty);
             }
         }
     }

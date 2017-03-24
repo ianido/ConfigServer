@@ -48,14 +48,14 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
              
-            //lock (tenant.Token)
-            //{
+            lock (tenant.Token)
+            {
                 if (entityName == "@default") entityName = tenant.Store.StartEntityName;
                 JToken selToken = tenant.RawTokens[entityName].SelectToken(path);
                 if (selToken == null) return new TNode(path, "{}", entityName);
                 var result = selToken.ToObject<JToken>();
                 return new TNode(path, result, entityName);
-            //}
+            }
         }
 
         public JToken Get(string path, int tenantId)
@@ -69,13 +69,13 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            //lock (tenant.Token)
-            //{
+            lock (tenant.Token)
+            {
                 JToken selToken = tenant.Token.SelectToken(path);
                 if (selToken == null) return default(T);
                 var result = selToken.ToObject<T>();
                 return result;
-            //}
+            }
         }
 
         public bool Set(TNode newToken, int tenantId)
@@ -84,8 +84,8 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            //lock (tenant.Token)
-            //{
+            lock (tenant.Token)
+            {
                 if (tenant.Store.Watcher.IsWatching(newToken.Entity))
                 {
                     JToken rawToken = tenant.Store.GetRaw(newToken.Entity);
@@ -96,7 +96,7 @@ namespace yupisoft.ConfigServer.Core
                 }
                 else
                     throw new Exception("Unauthorized Entity: "+ newToken.Entity);
-            //}
+            }
             return true;
         }
     }

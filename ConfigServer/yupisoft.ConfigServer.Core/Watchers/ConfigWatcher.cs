@@ -12,7 +12,7 @@ namespace yupisoft.ConfigServer.Core
 {
     
 
-    public class ConfigWatcher<T> : IConfigWatcher where T : IWatcherProvider, new()
+    public class ClusterManager<T> : IConfigWatcher where T : IWatcherProvider, new()
     {
         private Timer _timer;
 
@@ -29,7 +29,7 @@ namespace yupisoft.ConfigServer.Core
             if (Change != null) Change(this, entityName);
         }
 
-        public ConfigWatcher(ILogger<IConfigWatcher> logger)
+        public ClusterManager(ILogger<IConfigWatcher> logger)
         {
             _logger = logger;
             _watcher = new List<T>();

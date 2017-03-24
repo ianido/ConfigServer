@@ -41,7 +41,6 @@ namespace yupisoft.ConfigServer
             services.AddAuthentication();
             ConfigureLoggingServices(services);
             ConfigureAPISecurityServices(services);
-            string configPath = Path.Combine(hostingEnvironment.ContentRootPath, "examples");
 
             services.AddConfigServer(configuration);
 
