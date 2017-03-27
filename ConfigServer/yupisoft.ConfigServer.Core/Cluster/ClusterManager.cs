@@ -1,8 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,23 +41,41 @@ namespace yupisoft.ConfigServer.Core.Cluster
             if (Notify != null) Notify(sender, type);
         }
 
-        public ClusterManager(ILogger<IConfigWatcher> logger)
+        public ClusterManager(IOptions<ClusterConfigSection> clusterConfig, ILogger<ClusterManager> logger)
         {
             _logger = logger;
             _nodes = new List<Node>();
+            var nodesConfig = clusterConfig.Value.Nodes;
+            foreach(var node in nodesConfig)
+            {
+                if (node.Enabled)
+                    _nodes.Add(new Node() { Id = node.Name, Active = true, Address = node.Address });
+            }
+
             _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, HEARTBEAT_MILLESECONDS);
+        }
+
+        public void HeartBeat(Node node)
+        {
+            HeartBeatMessageRequest request = new HeartBeatMessageRequest();
+            string msgData = JsonConvert.SerializeObject(request);
+            HttpClient client = new HttpClient();
+            client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8)).ContinueWith((a) => {
+                if (a.Result.IsSuccessStatusCode)
+                {
+                    ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
+                    node.Active = (rsMsg.Item != null);
+                }
+            });
         }
 
         private void Timer_Elapsed(object state)
         {
-            //Check for file modifications
             _timer.Change(Timeout.Infinite, HEARTBEAT_MILLESECONDS); // Disable the timer;
-
-                foreach (var w in _nodes.ToList())
-                {
-                    w.Enabled = true;
-                }
-
+            foreach (var w in _nodes.ToList())
+            {
+                HeartBeat(w);
+            }
             _timer.Change(HEARTBEAT_MILLESECONDS, HEARTBEAT_MILLESECONDS); // Reenable the timer;
         }
 
@@ -62,7 +83,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         {
             _timer.Change(Timeout.Infinite, HEARTBEAT_MILLESECONDS);
             foreach (var w in _nodes)
-                w.Enabled = true;
+                w.Active = true;
             _timer.Change(HEARTBEAT_MILLESECONDS, HEARTBEAT_MILLESECONDS);
         }
 
@@ -70,7 +91,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         {
             _timer.Change(Timeout.Infinite, HEARTBEAT_MILLESECONDS);
             foreach (var w in _nodes)
-                w.Enabled = false;
+                w.Active = false;
             _timer.Change(HEARTBEAT_MILLESECONDS, HEARTBEAT_MILLESECONDS);
         }
 

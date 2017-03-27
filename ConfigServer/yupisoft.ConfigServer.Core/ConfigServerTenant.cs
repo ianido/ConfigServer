@@ -8,6 +8,7 @@ using yupisoft.ConfigServer.Core.Watchers;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace yupisoft.ConfigServer.Core
 {
@@ -18,9 +19,11 @@ namespace yupisoft.ConfigServer.Core
         public string StartEntityName { get { return Store.StartEntityName; } }
         public JToken Token { get; set; }
         public Dictionary<string, JToken> RawTokens { get; set; }
+        private ILogger _logger { get; set; }
 
-        public ConfigServerTenant(TenantConfigSection tenantConfig, IServiceProvider serviceProvider)
+        public ConfigServerTenant(TenantConfigSection tenantConfig, IServiceProvider serviceProvider, ILogger<ConfigServerTenant> logger)
         {
+            _logger = logger;
             RawTokens = new Dictionary<string, JToken>();
             TenantConfig = tenantConfig;
             switch (tenantConfig.Store.Provider)
@@ -53,7 +56,7 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
-        public void Load()
+        public void Load(bool startingUp)
         {
             Store.Watcher.StopMonitoring();
             Store.Watcher.ClearWatcher();
@@ -63,9 +66,12 @@ namespace yupisoft.ConfigServer.Core
             foreach (var entity in Store.Watcher.GetEntities())
             {
                 var rawToken = Store.GetRaw(entity);
-                var previousToken = RawTokens["entity"];
-                var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
-                JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
+                if (!startingUp && RawTokens.ContainsKey(entity))
+                {
+                    var previousToken = RawTokens["entity"];
+                    var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
+                    JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
+                }
                 // Sent Changes Diff to clusters.
                 newRawTokens.Add(entity, rawToken);
             }
@@ -79,9 +85,9 @@ namespace yupisoft.ConfigServer.Core
     {
         public List<ConfigServerTenant> Tenants { get; set; }
 
-        public ConfigServerTenants(TenantsConfigSection tenantsConfig, IServiceProvider serviceProvider)
+        public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IServiceProvider serviceProvider, ILogger<ConfigServerTenant> logger)
         {
-            Tenants = tenantsConfig.Tenants.Where(t=>t.Enabled).Select(t => new ConfigServerTenant(t, serviceProvider)).ToList();
+            Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t => new ConfigServerTenant(t, serviceProvider, logger)).ToList();
         }
     }
 }

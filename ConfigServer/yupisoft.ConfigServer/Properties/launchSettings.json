@@ -23,7 +23,8 @@
       "launchUrl": "http://localhost:8000/api/Config/test",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+      },
+      "applicationUrl": "http://localhost:8000"
     }
   }
 }

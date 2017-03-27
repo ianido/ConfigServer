@@ -19,7 +19,7 @@ namespace yupisoft.ConfigServer.Core
             foreach (var tenant in _tenants.Tenants)
             {
                 tenant.Store.Change += Store_Change;
-                tenant.Load();
+                tenant.Load(true);
             }
         }
 
@@ -28,7 +28,7 @@ namespace yupisoft.ConfigServer.Core
             foreach (var tenant in _tenants.Tenants)
             {
                 if (tenant.Store.StartEntityName == sender.StartEntityName)
-                    tenant.Load();
+                    tenant.Load(false);
             }
         }
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
+using yupisoft.ConfigServer.Core.Cluster;
 
 namespace yupisoft.ConfigServer.Core
 {
@@ -15,12 +16,19 @@ namespace yupisoft.ConfigServer.Core
             var section =
                 configuration.GetSection("ConfigServer");
             // we first need to create an instance
-            var settings = new TenantsConfigSection();
-            // then we set the properties 
-            new ConfigureFromConfigurationOptions<TenantsConfigSection>(section).Configure(settings);
+            var tenantSettings = new TenantsConfigSection();
+            var clusterSettings = new ClusterConfigSection();
 
-            services.AddSingleton(imp => new ConfigServerTenants(settings, imp));
-            services.AddSingleton(imp => new ConfigServerManager(imp.GetService<ConfigServerTenants>()));
+            services.Configure<TenantsConfigSection>(configuration.GetSection("ConfigServer"));
+            services.Configure<ClusterConfigSection>(configuration.GetSection("ConfigServer"));
+
+            // then we set the properties 
+            //new ConfigureFromConfigurationOptions<TenantsConfigSection>(section).Configure(tenantSettings);
+            //new ConfigureFromConfigurationOptions<ClusterConfigSection>(section).Configure(clusterSettings);
+
+            services.AddSingleton<ConfigServerTenants>();// (imp => new ConfigServerTenants(tenantSettings, imp));
+            services.AddSingleton<ConfigServerManager>();// (imp => new ConfigServerManager(imp.GetService<ConfigServerTenants>()));
+            services.AddSingleton<ClusterManager>(); // (imp => new ClusterManager(imp.GetService<ConfigServerTenants>()));
 
             return services;
         }

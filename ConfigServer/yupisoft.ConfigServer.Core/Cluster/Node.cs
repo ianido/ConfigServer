@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿
 
 namespace yupisoft.ConfigServer.Core.Cluster
 {
     public class Node
     {
-        public bool Enabled { get; set; }
+        public bool Active { get; set; }
+        public string Id { get; set; }
+        public string Address { get; set; }
     }
 }

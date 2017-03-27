@@ -38,10 +38,11 @@ namespace yupisoft.ConfigServer
         {
 
             // First add services that are intrinsic for ServiceCollection
+            services.AddOptions();
             services.AddAuthentication();
             ConfigureLoggingServices(services);
             ConfigureAPISecurityServices(services);
-
+            
             services.AddConfigServer(configuration);
 
             //ConfigureCachingServices(services, configuration);
