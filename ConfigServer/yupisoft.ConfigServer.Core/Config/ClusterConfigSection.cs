@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ namespace yupisoft.ConfigServer.Core
 
     public class NodeConfigSection
     {
-        public string Name { get; set; }
+        public string Id { get; set; }
         public bool Enabled { get; set; }
         public string Address { get; set; }
     }
@@ -24,6 +25,8 @@ namespace yupisoft.ConfigServer.Core
         {
             Nodes = new List<NodeConfigSection>();
         } 
+
+
 
     }
 }

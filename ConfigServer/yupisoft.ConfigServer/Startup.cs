@@ -27,8 +27,7 @@ namespace yupisoft.ConfigServer
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory, IServiceProvider provider)
         {
             ConfigureLogging(app, loggerFactory, this.configuration);
-            ConfigureAPISecurity(app);          
-            
+            ConfigureAPISecurity(app);
             app.UseMvc();
         }
 
@@ -45,7 +44,7 @@ namespace yupisoft.ConfigServer
             ConfigureLoggingServices(services);
             ConfigureAPISecurityServices(services);
             
-            services.AddConfigServer(configuration);
+            services.AddConfigServer(configuration, hostingEnvironment);
 
             //ConfigureCachingServices(services, configuration);
 

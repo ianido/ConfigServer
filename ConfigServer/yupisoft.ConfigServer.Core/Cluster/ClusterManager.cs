@@ -29,6 +29,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private Timer _timer;
 
         private ILogger _logger;
+        private ConfigurationChanger _cfgChanger;
 
         private int _NodesMonitoringHeartbeat = 2000; // Milliseconds
         private int _NodesMonitoringMaxAttempts = 3;
@@ -43,8 +44,9 @@ namespace yupisoft.ConfigServer.Core.Cluster
             if (Notify != null) Notify(sender, type);
         }
 
-        public ClusterManager(IOptions<ClusterConfigSection> clusterConfig, ILogger<ClusterManager> logger)
+        public ClusterManager(IOptions<ClusterConfigSection> clusterConfig, ILogger<ClusterManager> logger, ConfigurationChanger cfgChanger)
         {
+            _cfgChanger = cfgChanger;
             _logger = logger;
             _nodes = new List<Node>();
             _NodesMonitoringHeartbeat = clusterConfig.Value.NodesMonitoringInterval;
@@ -55,7 +57,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             foreach(var node in nodesConfig)
             {
                 if (node.Enabled)
-                    _nodes.Add(new Node() { Id = node.Name, Active = true, Address = node.Address, Self = (clusterConfig.Value.OwnNodeName == (node.Name)) });
+                    _nodes.Add(new Node() { Id = node.Id, Active = true, Address = node.Address, Self = (clusterConfig.Value.OwnNodeName == (node.Id)) });
             }
 
             _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, _NodesMonitoringHeartbeat);
@@ -75,6 +77,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 HeartBeatMessageRequest request = new HeartBeatMessageRequest();
                 string msgData = JsonConvert.SerializeObject(request);
                 HttpClient client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(2);
                 _logger.LogTrace("Node: " + node.Id + " heartbeat");
                 node.InUse = true;
                 client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8)).ContinueWith((a) =>
@@ -99,16 +102,31 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 // ==========================================================================
 
                             }
-                            if (a.Status == TaskStatus.Faulted)
+                            if ((a.Status == TaskStatus.Faulted) || (a.Status == TaskStatus.Canceled))
                             {
                                 node.Attempts++;
                                 _logger.LogError("Unable to contact node: " + node.Id + " attempt: " + node.Attempts);
-                            }
+                            }                           
+                            
                             if (node.Attempts >= _NodesMonitoringMaxAttempts)
                             {
-                                node.Attempts = 0;
-                                node.SkipAttempts = _NodesMonitoringSkipAttemptsOnFail;
-                                _logger.LogError("Node " + node.Id + " failed to heartbeat for " + node.Attempts + " attempts; setting node for " + node.SkipAttempts + " skip attemps.");
+                                if (node.Life == 0)
+                                {
+                                    lock (_cfgChanger)
+                                    {
+                                        _cfgChanger.DisableClusterNode(node.Id);
+                                        node.Active = false;
+                                    }
+                                    node.Attempts = 0;
+                                    _logger.LogError("Node " + node.Id + " disabled. ");
+                                }
+                                else
+                                {
+                                    node.Attempts = 0;
+                                    node.Life--;
+                                    node.SkipAttempts = _NodesMonitoringSkipAttemptsOnFail;
+                                    _logger.LogError("Node " + node.Id + " failed to heartbeat for " + node.Attempts + " attempts; setting node for " + node.SkipAttempts + " skip attemps.");
+                                }
                             }
                         }
                         finally

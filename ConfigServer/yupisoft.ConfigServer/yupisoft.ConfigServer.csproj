@@ -39,6 +39,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="1.1.1" />
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
     <PackageReference Include="NLog.Web.AspNetCore" Version="4.3.1" />
+    <!--Force new version of System.Net.Http to workaround issue in 4.3.0 with net462, should be able to remove this line soon.
+    Issue is complaint of could not load file or assembly 'System.Diagnostics.DiagnosticSource' -->
+    <PackageReference Include="System.Net.Http" Version="4.3.1" />
   </ItemGroup>
 
 
@@ -49,15 +52,11 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
-
-  <ItemGroup>
-    <Compile Update="MainService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-  </ItemGroup>
-
   <ItemGroup>
     <Content Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Examples\sampleinheritance.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

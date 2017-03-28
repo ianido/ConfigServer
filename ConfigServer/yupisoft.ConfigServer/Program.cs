@@ -9,7 +9,7 @@ namespace yupisoft.ConfigServer
 {
     public class Program
     {
-        public static int Port = 8000;
+        public static int Port = 8002;
         public static string NodeName = Port.ToString();
         static void Main(string[] args)
         {            
@@ -37,6 +37,7 @@ namespace yupisoft.ConfigServer
                 .UseStartup<Startup>()
                 .Build();
 
+            Microsoft.Extensions.DependencyInjection.ActivatorUtilities.GetServiceOrCreateInstance(host.Services, typeof(Controllers.ConfigController));
 
             if (Debugger.IsAttached || args.Contains("--debug"))
             {

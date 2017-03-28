@@ -15,7 +15,7 @@ namespace yupisoft.ConfigServer.Controllers
         private ILogger _logger { get; set; }
 
 
-        public ClusterController(ILogger<ConfigController> logger)
+        public ClusterController(ILogger<ClusterController> logger)
         {
             _logger = logger;
         }
