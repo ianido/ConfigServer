@@ -49,14 +49,16 @@ namespace yupisoft.ConfigServer.Core.Cluster
             foreach(var node in nodesConfig)
             {
                 if (node.Enabled)
-                    _nodes.Add(new Node() { Id = node.Name, Active = true, Address = node.Address });
+                    _nodes.Add(new Node() { Id = node.Name, Active = true, Address = node.Address, Self = (clusterConfig.Value.OwnNodeName == (node.Name)) });
             }
 
             _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, HEARTBEAT_MILLESECONDS);
+            _logger.LogTrace("Created ClusterManager with " + _nodes.Count + " nodes.");
         }
 
         public void HeartBeat(Node node)
         {
+            if (node.Self) return;
             HeartBeatMessageRequest request = new HeartBeatMessageRequest();
             string msgData = JsonConvert.SerializeObject(request);
             HttpClient client = new HttpClient();
@@ -75,6 +77,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             foreach (var w in _nodes.ToList())
             {
                 HeartBeat(w);
+                _logger.LogTrace("Node: " + w.Id + " heartbeat");
             }
             _timer.Change(HEARTBEAT_MILLESECONDS, HEARTBEAT_MILLESECONDS); // Reenable the timer;
         }

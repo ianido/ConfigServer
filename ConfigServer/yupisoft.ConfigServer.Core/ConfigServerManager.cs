@@ -11,16 +11,20 @@ namespace yupisoft.ConfigServer.Core
     {
         private static object objlock = new object();
 
+        private ILogger _logger;
+
         private ConfigServerTenants _tenants;
 
-        public ConfigServerManager(ConfigServerTenants tenants)
+        public ConfigServerManager(ConfigServerTenants tenants, ILogger<ConfigServerManager> logger)
         {
             _tenants = tenants;
+            _logger = logger;
             foreach (var tenant in _tenants.Tenants)
             {
                 tenant.Store.Change += Store_Change;
                 tenant.Load(true);
             }
+            _logger.LogTrace("Created ConfigManager with " + _tenants.Tenants.Count + " tenants.");
         }
 
         private void Store_Change(IStoreProvider sender, string entityName)

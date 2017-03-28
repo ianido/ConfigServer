@@ -13,12 +13,11 @@ namespace yupisoft.ConfigServer.Controllers
     public class ClusterController : Controller
     {
         private ILogger _logger { get; set; }
-        private ClusterManager _cfg { get; set; }
 
-        public ClusterController(ILogger<ConfigController> logger, ClusterManager clusterManager)
+
+        public ClusterController(ILogger<ConfigController> logger)
         {
             _logger = logger;
-            _cfg = clusterManager;
         }
         
         [HttpPost]

@@ -15,7 +15,7 @@ namespace yupisoft.ConfigServer.Core
 
     public class ClusterConfigSection
     {
-
+        public string OwnNodeName { get; set; }
         public List<NodeConfigSection> Nodes { get; set; }
 
         public ClusterConfigSection()
