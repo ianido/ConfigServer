@@ -35,21 +35,21 @@ namespace yupisoft.ConfigServer.Core
                         if (tenantConfig.Store.Connection.Contains("$ContentRoot") && env != null)
                             tenantConfig.Store.Connection = tenantConfig.Store.Connection.Replace("$ContentRoot", env.ContentRootPath);
                         Store = new FileStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ClusterManager<FileWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
+                                                      new ConfigWatcher<FileWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
                                                       serviceProvider.GetService<ILogger<IStoreProvider>>());
                     }
                     break;
                 case "SqlServerStoreProvider":
                     {
                         Store = new SqlServerStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ClusterManager<SqlServerWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
+                                                      new ConfigWatcher<SqlServerWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
                                                       serviceProvider.GetService<ILogger<IStoreProvider>>());
                     }
                     break;
                 case "MongoStoreProvider":
                     {
                         Store = new MongoStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ClusterManager<MongoWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
+                                                      new ConfigWatcher<MongoWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
                                                       serviceProvider.GetService<ILogger<IStoreProvider>>());
                     }
                     break;

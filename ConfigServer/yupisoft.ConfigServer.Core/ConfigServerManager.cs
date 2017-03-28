@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using yupisoft.ConfigServer.Core.Cluster;
 
 namespace yupisoft.ConfigServer.Core
 {
@@ -15,16 +16,21 @@ namespace yupisoft.ConfigServer.Core
 
         private ConfigServerTenants _tenants;
 
-        public ConfigServerManager(ConfigServerTenants tenants, ILogger<ConfigServerManager> logger)
+        private ClusterManager _clusterManager;
+
+        public ConfigServerManager(ConfigServerTenants tenants, ILogger<ConfigServerManager> logger, ClusterManager clusterManager)
         {
             _tenants = tenants;
             _logger = logger;
+            _clusterManager = clusterManager;
+
             foreach (var tenant in _tenants.Tenants)
             {
                 tenant.Store.Change += Store_Change;
                 tenant.Load(true);
             }
             _logger.LogTrace("Created ConfigManager with " + _tenants.Tenants.Count + " tenants.");
+            _clusterManager.StartManaging();
         }
 
         private void Store_Change(IStoreProvider sender, string entityName)
@@ -105,3 +111,4 @@ namespace yupisoft.ConfigServer.Core
         }
     }
 }
+

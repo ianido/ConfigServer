@@ -30,7 +30,9 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         private ILogger _logger;
 
-        private int HEARTBEAT_MILLESECONDS = 2000;
+        private int _NodesMonitoringHeartbeat = 2000; // Milliseconds
+        private int _NodesMonitoringMaxAttempts = 3;
+        private int _NodesMonitoringSkipAttemptsOnFail = 3;
 
         List<Node> _nodes;        
 
@@ -45,6 +47,10 @@ namespace yupisoft.ConfigServer.Core.Cluster
         {
             _logger = logger;
             _nodes = new List<Node>();
+            _NodesMonitoringHeartbeat = clusterConfig.Value.NodesMonitoringInterval;
+            _NodesMonitoringMaxAttempts = clusterConfig.Value.NodesMonitoringMaxAttempts;
+            _NodesMonitoringSkipAttemptsOnFail = clusterConfig.Value.NodesMonitoringSkipAttemptsOnFail;
+
             var nodesConfig = clusterConfig.Value.Nodes;
             foreach(var node in nodesConfig)
             {
@@ -52,50 +58,95 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     _nodes.Add(new Node() { Id = node.Name, Active = true, Address = node.Address, Self = (clusterConfig.Value.OwnNodeName == (node.Name)) });
             }
 
-            _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, HEARTBEAT_MILLESECONDS);
+            _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, _NodesMonitoringHeartbeat);
             _logger.LogTrace("Created ClusterManager with " + _nodes.Count + " nodes.");
         }
 
         public void HeartBeat(Node node)
         {
-            if (node.Self) return;
-            HeartBeatMessageRequest request = new HeartBeatMessageRequest();
-            string msgData = JsonConvert.SerializeObject(request);
-            HttpClient client = new HttpClient();
-            client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8)).ContinueWith((a) => {
-                if (a.Result.IsSuccessStatusCode)
+            lock (node)
+            {   
+                if ((node.Self) || (node.InUse)) return;
+                if (node.SkipAttempts > 0)
                 {
-                    ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
-                    node.Active = (rsMsg.Item != null);
-                }
-            });
+                    node.SkipAttempts--;
+                    return;
+                }                
+                HeartBeatMessageRequest request = new HeartBeatMessageRequest();
+                string msgData = JsonConvert.SerializeObject(request);
+                HttpClient client = new HttpClient();
+                _logger.LogTrace("Node: " + node.Id + " heartbeat");
+                node.InUse = true;
+                client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8)).ContinueWith((a) =>
+                {
+                    lock (node)
+                    {
+                        try
+                        {
+                            if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
+                            {
+                                ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
+                                if (rsMsg.Item == null)
+                                {
+                                    _logger.LogError("Node: " + node.Id + " do not return valid response. attempt: " + node.Attempts);
+                                    node.Attempts++;
+                                }
+                                _logger.LogInformation("Node: " + node.Id + " heartbeat successfully.");
+                                node.Attempts = 0;
+                                node.SkipAttempts = 0;
+                                // ==========================================================================
+                                // TODO : Do Heartbeat operations here.
+                                // ==========================================================================
+
+                            }
+                            if (a.Status == TaskStatus.Faulted)
+                            {
+                                node.Attempts++;
+                                _logger.LogError("Unable to contact node: " + node.Id + " attempt: " + node.Attempts);
+                            }
+                            if (node.Attempts >= _NodesMonitoringMaxAttempts)
+                            {
+                                node.Attempts = 0;
+                                node.SkipAttempts = _NodesMonitoringSkipAttemptsOnFail;
+                                _logger.LogError("Node " + node.Id + " failed to heartbeat for " + node.Attempts + " attempts; setting node for " + node.SkipAttempts + " skip attemps.");
+                            }
+                        }
+                        finally
+                        {
+                            node.InUse = false;
+                        }
+                    }
+                });
+            }
         }
 
         private void Timer_Elapsed(object state)
         {
-            _timer.Change(Timeout.Infinite, HEARTBEAT_MILLESECONDS); // Disable the timer;
+            _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat); // Disable the timer;
             foreach (var w in _nodes.ToList())
             {
-                HeartBeat(w);
-                _logger.LogTrace("Node: " + w.Id + " heartbeat");
+                if (w.Active)
+                {
+                    HeartBeat(w);                    
+                }
             }
-            _timer.Change(HEARTBEAT_MILLESECONDS, HEARTBEAT_MILLESECONDS); // Reenable the timer;
+            _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat); // Reenable the timer;
         }
 
-        public void StartMonitoring()
+        public void StartManaging()
         {
-            _timer.Change(Timeout.Infinite, HEARTBEAT_MILLESECONDS);
+            _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat);
             foreach (var w in _nodes)
                 w.Active = true;
-            _timer.Change(HEARTBEAT_MILLESECONDS, HEARTBEAT_MILLESECONDS);
+            _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat);
         }
 
-        public void StopMonitoring()
+        public void StopManaging()
         {
-            _timer.Change(Timeout.Infinite, HEARTBEAT_MILLESECONDS);
+            _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat);
             foreach (var w in _nodes)
                 w.Active = false;
-            _timer.Change(HEARTBEAT_MILLESECONDS, HEARTBEAT_MILLESECONDS);
+            _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat);
         }
 
         public void AddNode(Node node)
