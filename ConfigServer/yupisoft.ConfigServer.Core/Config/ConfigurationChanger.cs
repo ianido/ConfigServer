@@ -26,5 +26,18 @@ namespace yupisoft.ConfigServer.Core
                 File.WriteAllText(_AppSettings, modifiedJsonString);
             }
         }
+
+        public void AddClusterNode(NodeConfigSection node)
+        {
+            var jsonString = File.ReadAllText(_AppSettings);
+            JToken jsonObject = JsonConvert.DeserializeObject<JToken>(jsonString);
+            JArray arTokens = (JArray)jsonObject.SelectToken("ConfigServer.Nodes");
+            if (arTokens != null)
+            {
+                arTokens.Add(JToken.FromObject(node));
+                var modifiedJsonString = JsonConvert.SerializeObject(jsonObject, Formatting.Indented);
+                File.WriteAllText(_AppSettings, modifiedJsonString);
+            }
+        }
     }
 }

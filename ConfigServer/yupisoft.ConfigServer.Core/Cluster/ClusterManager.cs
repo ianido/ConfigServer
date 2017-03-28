@@ -44,6 +44,14 @@ namespace yupisoft.ConfigServer.Core.Cluster
             if (Notify != null) Notify(sender, type);
         }
 
+        public Node[] GetNodes()
+        {
+            lock (_nodes)
+            {
+                return _nodes.ToArray();
+            }
+        }
+
         public ClusterManager(IOptions<ClusterConfigSection> clusterConfig, ILogger<ClusterManager> logger, ConfigurationChanger cfgChanger)
         {
             _cfgChanger = cfgChanger;
@@ -57,11 +65,40 @@ namespace yupisoft.ConfigServer.Core.Cluster
             foreach(var node in nodesConfig)
             {
                 if (node.Enabled)
-                    _nodes.Add(new Node() { Id = node.Id, Active = true, Address = node.Address, Self = (clusterConfig.Value.OwnNodeName == (node.Id)) });
+                {
+                    var newNode = new Node() { Id = node.Id, Active = true, Address = node.Address, Self = (clusterConfig.Value.OwnNodeName == (node.Id)), NodeConfig = node };
+                    _nodes.Add(newNode);
+                }
             }
 
             _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, _NodesMonitoringHeartbeat);
-            _logger.LogTrace("Created ClusterManager with " + _nodes.Count + " nodes.");
+            _logger.LogInformation("Created ClusterManager with " + _nodes.Count + " nodes.");
+        }
+
+        public void UpdateNodes(NodeConfigSection[] nodesConfig)
+        {
+            if (nodesConfig == null) return;
+            Node[] nodes = GetNodes();
+            foreach (var node in nodesConfig)
+            {
+                if (node.Enabled)
+                {
+                    var foundNode = nodes.FirstOrDefault(e => e.Id == node.Id);
+                    if (foundNode != null)
+                    {
+                        foundNode.Active = true;
+                    }
+                    else
+                    {
+                        var newNode = new Node() { Id = node.Id, Active = true, Address = node.Address, Self = false, NodeConfig = node };
+                        lock (_nodes)
+                        {
+                            _nodes.Add(newNode);
+                            _cfgChanger.AddClusterNode(node);
+                        }
+                    }
+                }
+            }
         }
 
         public void HeartBeat(Node node)
@@ -75,12 +112,18 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     return;
                 }                
                 HeartBeatMessageRequest request = new HeartBeatMessageRequest();
+                // ==========================================================================
+                // TODO : Create Request Message here.
+                // ==========================================================================
+                request.Nodes = _nodes.Select(e=>e.NodeConfig).ToArray();
+
                 string msgData = JsonConvert.SerializeObject(request);
                 HttpClient client = new HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(2);
+                //client.Timeout = TimeSpan.FromSeconds(2);
                 _logger.LogTrace("Node: " + node.Id + " heartbeat");
                 node.InUse = true;
-                client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8)).ContinueWith((a) =>
+
+                client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8, "application/json")).ContinueWith((a) =>
                 {
                     lock (node)
                     {
@@ -97,6 +140,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 _logger.LogInformation("Node: " + node.Id + " heartbeat successfully.");
                                 node.Attempts = 0;
                                 node.SkipAttempts = 0;
+                                node.ResetLife();
                                 // ==========================================================================
                                 // TODO : Do Heartbeat operations here.
                                 // ==========================================================================
@@ -121,11 +165,11 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                     _logger.LogError("Node " + node.Id + " disabled. ");
                                 }
                                 else
-                                {
-                                    node.Attempts = 0;
-                                    node.Life--;
+                                {   
                                     node.SkipAttempts = _NodesMonitoringSkipAttemptsOnFail;
                                     _logger.LogError("Node " + node.Id + " failed to heartbeat for " + node.Attempts + " attempts; setting node for " + node.SkipAttempts + " skip attemps.");
+                                    node.Attempts = 0;
+                                    node.Life--;
                                 }
                             }
                         }
@@ -141,7 +185,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private void Timer_Elapsed(object state)
         {
             _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat); // Disable the timer;
-            foreach (var w in _nodes.ToList())
+            Node[] nodes = null;
+            lock (_nodes)
+            {
+                nodes = _nodes.ToArray();
+            }
+            foreach (var w in nodes)
             {
                 if (w.Active)
                 {

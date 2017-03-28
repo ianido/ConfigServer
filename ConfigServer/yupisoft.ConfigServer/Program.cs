@@ -19,7 +19,7 @@ namespace yupisoft.ConfigServer
                 if (sport != null)
                 {
                     string[] v = sport.Split(':');
-                    if (v.Length > 1) Port = int.Parse(v[1]);
+                    if (v.Length > 1) Port = int.Parse(NodeName = v[1]);
                 }
                 var sNodeName = args.FirstOrDefault(p => p.StartsWith("node"));
                 if (sNodeName != null)

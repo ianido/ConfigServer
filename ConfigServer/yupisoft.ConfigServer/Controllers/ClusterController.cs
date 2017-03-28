@@ -13,17 +13,20 @@ namespace yupisoft.ConfigServer.Controllers
     public class ClusterController : Controller
     {
         private ILogger _logger { get; set; }
+        private ClusterManager _clsManager { get; set; }
 
 
-        public ClusterController(ILogger<ClusterController> logger)
+        public ClusterController(ILogger<ClusterController> logger, ClusterManager clsManager)
         {
             _logger = logger;
+            _clsManager = clsManager;
         }
         
         [HttpPost]
         [Route("api/[controller]/heartbeat")]
         public IActionResult Heartbeat([FromBody]HeartBeatMessageRequest msg)
         {
+            
             ApiSingleResult<HeartBeatMessageResponse> result = new ApiSingleResult<HeartBeatMessageResponse>();
             try
             {
@@ -31,7 +34,10 @@ namespace yupisoft.ConfigServer.Controllers
                 result.Item = new HeartBeatMessageResponse();
                 if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
                     else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
-                _logger.LogTrace("");
+
+                _clsManager.UpdateNodes(msg.Nodes);
+
+                //_logger.LogInformation("Received Heartbeat");
             }
             catch (Exception ex)
             {

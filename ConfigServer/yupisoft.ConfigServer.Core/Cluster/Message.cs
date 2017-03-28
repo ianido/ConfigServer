@@ -9,6 +9,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public long Term { get; set; }
         public DateTime Created { get; set; }
         public object Data { get; set; }
+        public NodeConfigSection[] Nodes { get; set; }
     }
 
     public class HeartBeatMessageResponse
