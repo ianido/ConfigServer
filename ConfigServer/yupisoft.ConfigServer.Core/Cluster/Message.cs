@@ -4,25 +4,39 @@ using System.Text;
 
 namespace yupisoft.ConfigServer.Core.Cluster
 {
+    public enum HeartBeartCommand
+    {
+        HeartBeatRequest,
+        HeartBeatResponse,
+        SyncRequest,
+        SyncResponse,
+        InUse,
+        Unknow
+    }
     public class HeartBeatMessageRequest
     {
-        public long LogId { get; set; }
+        public string NodeId { get; set; }
+        public HeartBeartCommand Command { get; set; }
+        public long LastLogId { get; set; }
         public DateTime Created { get; set; }
-        public object Data { get; set; }
+        public List<LogMessage> Log { get; set; }
         public NodeConfigSection[] Nodes { get; set; }
         public HeartBeatMessageRequest()
         {
             Created = DateTime.UtcNow;
-            Data = null;
+            Log = null;
             Nodes = new NodeConfigSection[0];
-            LogId = 1;
+            LastLogId = 0;
         }
     }
 
     public class HeartBeatMessageResponse
     {
-        public long LogId { get; set; }
+        public HeartBeartCommand Command { get; set; }
+        public string NodeId { get; set; }
+
+        public long LastLogId { get; set; }
+        public List<LogMessage> Log { get; set; }
         public DateTime Created { get; set; }
-        public object Data { get; set; }
     }
 }

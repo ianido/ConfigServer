@@ -35,7 +35,7 @@ namespace yupisoft.ConfigServer.Controllers
                 if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
                     else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
 
-                _clsManager.UpdateNodes(msg.Nodes);
+                _clsManager.ProcessHeartBeat(msg);
 
                 //_logger.LogInformation("Received Heartbeat");
             }

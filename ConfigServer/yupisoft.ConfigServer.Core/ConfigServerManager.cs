@@ -109,6 +109,28 @@ namespace yupisoft.ConfigServer.Core
             }
             return true;
         }
+
+        public bool ApplyUpdate(int tenantId, string entity, string jsonDiff)
+        {
+            var tenant = GetTenant(tenantId);
+            if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
+            if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
+
+            lock (tenant.Token)
+            {
+                if (tenant.Store.Watcher.IsWatching(entity))
+                {
+                    JToken rawToken = tenant.Store.GetRaw(entity);
+                    JToken patchToken = JToken.Parse(jsonDiff);
+                    var mJsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
+                    JToken result = mJsonDiff.Patch(rawToken, patchToken);
+                    tenant.Store.Set(result, entity);
+                }
+                else
+                    throw new Exception("Unauthorized Entity: " + entity);
+            }
+            return true;
+        }
     }
 }
 
