@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,17 +14,7 @@ using System.Threading.Tasks;
 
 namespace yupisoft.ConfigServer.Core.Cluster
 {
-    public enum NodeEventType
-    {
-        RequestClusterSync, // Request Cluster Sync; Get me all the nodes; Initial Message to the Network to Start
-        RequestDataSync,    // Request Data Sync;    Get me the data. 
-        SendClusterSync,    // Send Cluster Sync to the node.
-        SendDataSync,       // Send Data Sync to the node.
-        SendDataDiff,       // Send Data Diff to the nodes.
-        NotifyDegraded,     // Node performance is degraded.
-        SetDisable          // The node is going to be disabled.
-    }
-    public delegate void NodeEvent(Node sender, NodeEventType type);
+
     public class ClusterManager
     {
         private Timer _timer;
@@ -50,13 +41,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
         }
         
-        public event NodeEvent Notify;
-
-        protected virtual void OnNodeNotify(Node sender, NodeEventType type)
-        {
-            if (Notify != null) Notify(sender, type);
-        }
-
         public Node[] GetNodes()
         {
             lock (_nodes)
@@ -69,6 +53,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         {
             _cfgChanger = cfgChanger;
             _cfgServer = cfgServer;
+            _cfgServer.DataChanged += _cfgServer_DataChanged;
             _logger = logger;
             _nodes = new List<Node>();
             _NodesMonitoringHeartbeat = clusterConfig.Value.NodesMonitoringInterval;
@@ -98,6 +83,13 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
             _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, _NodesMonitoringHeartbeat);
             _logger.LogInformation("Created ClusterManager with " + _nodes.Count + " nodes.");
+        }
+
+        private void _cfgServer_DataChanged(int tenantId, string entity, JToken diffToken)
+        {
+            LogMessage lm = new LogMessage() { Entity = entity, TenantId = tenantId, JsonDiff = diffToken.ToString(Formatting.None) };
+            lm.LogId = (selfNode.LogMessages.Count > 0) ? selfNode.LogMessages.Last().LogId : 1;
+            selfNode.LogMessages.Add(lm);
         }
 
         public HeartBeatMessageResponse ProcessHeartBeat(HeartBeatMessageRequest request)
@@ -133,7 +125,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 {
                     response.LastLogId = selfNode.LastLogId;
                     response.NodeId = selfNode.Id;
-                    if (selfNode.LastLogId < request.LastLogId)
+                    if (selfNode.LastLogId < request.LastLogId) // My LogId is not updated
                     {
                         selfNode.Status = SelfNodeStatus.Unsyncronized;
                         HeartBeatMessageRequest req = new HeartBeatMessageRequest();
@@ -223,8 +215,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
             return res;
         }
 
-
-
         public void UpdateNodes(NodeConfigSection[] nodesConfig)
         {
             if (nodesConfig == null) return;
@@ -294,11 +284,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 node.Attempts = 0;
                                 node.SkipAttempts = 0;
                                 node.ResetLife();
-                                    // ==========================================================================
-                                    // TODO : Do Heartbeat operations here.
-                                    // ==========================================================================
-
-                                }
+                            }
                             else
                             {
                                 node.Attempts++;

@@ -37,7 +37,10 @@ namespace yupisoft.ConfigServer
                 .UseStartup<Startup>()
                 .Build();
 
-            Microsoft.Extensions.DependencyInjection.ActivatorUtilities.GetServiceOrCreateInstance(host.Services, typeof(Controllers.ConfigController));
+            Core.Cluster.ClusterManager clsManager = (Core.Cluster.ClusterManager)Microsoft.Extensions.DependencyInjection.ActivatorUtilities.GetServiceOrCreateInstance(host.Services, typeof(Core.Cluster.ClusterManager));
+            clsManager.StartManaging();
+
+
 
             if (Debugger.IsAttached || args.Contains("--debug"))
             {

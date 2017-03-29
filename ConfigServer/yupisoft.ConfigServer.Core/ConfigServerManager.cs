@@ -16,21 +16,26 @@ namespace yupisoft.ConfigServer.Core
 
         private ConfigServerTenants _tenants;
 
-        private ClusterManager _clusterManager;
+        public event DataChangedEventHandler DataChanged;
 
-        public ConfigServerManager(ConfigServerTenants tenants, ILogger<ConfigServerManager> logger, ClusterManager clusterManager)
+
+        public ConfigServerManager(ConfigServerTenants tenants, ILogger<ConfigServerManager> logger)
         {
             _tenants = tenants;
             _logger = logger;
-            _clusterManager = clusterManager;
 
             foreach (var tenant in _tenants.Tenants)
             {
                 tenant.Store.Change += Store_Change;
+                tenant.DataChanged += Tenant_DataChanged;
                 tenant.Load(true);
             }
-            _logger.LogTrace("Created ConfigManager with " + _tenants.Tenants.Count + " tenants.");
-            _clusterManager.StartManaging();
+            _logger.LogTrace("Created ConfigManager with " + _tenants.Tenants.Count + " tenants.");            
+        }
+
+        private void Tenant_DataChanged(int tenantId, string entity, JToken diffToken)
+        {
+            DataChanged?.Invoke(tenantId, entity, diffToken);
         }
 
         private void Store_Change(IStoreProvider sender, string entityName)

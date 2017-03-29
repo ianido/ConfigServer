@@ -29,7 +29,7 @@ namespace yupisoft.ConfigServer.Core
             if (Change != null) Change(this, entityName);
         }
 
-        public ConfigWatcher(ILogger<IConfigWatcher> logger)
+        public ConfigWatcher(ILogger logger)
         {
             _logger = logger;
             _watcher = new List<T>();

@@ -9,11 +9,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
+using yupisoft.ConfigServer.Core.Cluster;
 
 namespace yupisoft.ConfigServer.Core
 {
+
+    public delegate void DataChangedEventHandler(int tenantId, string entity, JToken diffToken);
     public class ConfigServerTenant
     {
+        public event DataChangedEventHandler DataChanged;
+
         public TenantConfigSection TenantConfig { get; set; }
         public IStoreProvider Store { get; }
         public string StartEntityName { get { return Store.StartEntityName; } }
@@ -21,7 +26,7 @@ namespace yupisoft.ConfigServer.Core
         public Dictionary<string, JToken> RawTokens { get; set; }
         private ILogger _logger { get; set; }
 
-        public ConfigServerTenant(TenantConfigSection tenantConfig, IServiceProvider serviceProvider, ILogger<ConfigServerTenant> logger)
+        public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger)
         {
             _logger = logger;
             RawTokens = new Dictionary<string, JToken>();
@@ -31,26 +36,22 @@ namespace yupisoft.ConfigServer.Core
                  
                 case "FileStoreProvider":
                     {
-                        var env = serviceProvider.GetService<IHostingEnvironment>();
                         if (tenantConfig.Store.Connection.Contains("$ContentRoot") && env != null)
                             tenantConfig.Store.Connection = tenantConfig.Store.Connection.Replace("$ContentRoot", env.ContentRootPath);
                         Store = new FileStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ConfigWatcher<FileWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
-                                                      serviceProvider.GetService<ILogger<IStoreProvider>>());
+                                                      new ConfigWatcher<FileWatcherProvider>(logger), logger);
                     }
                     break;
                 case "SqlServerStoreProvider":
                     {
                         Store = new SqlServerStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ConfigWatcher<SqlServerWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
-                                                      serviceProvider.GetService<ILogger<IStoreProvider>>());
+                                                      new ConfigWatcher<SqlServerWatcherProvider>(logger), logger);
                     }
                     break;
                 case "MongoStoreProvider":
                     {
                         Store = new MongoStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ConfigWatcher<MongoWatcherProvider>(serviceProvider.GetService<ILogger<IConfigWatcher>>()),
-                                                      serviceProvider.GetService<ILogger<IStoreProvider>>());
+                                                      new ConfigWatcher<MongoWatcherProvider>(logger), logger);
                     }
                     break;
             }
@@ -71,8 +72,9 @@ namespace yupisoft.ConfigServer.Core
                     var previousToken = RawTokens["entity"];
                     var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
                     JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
+                    DataChanged?.Invoke(TenantConfig.Id, entity, diffToken);
                 }
-                // Sent Changes Diff to clusters.
+
                 newRawTokens.Add(entity, rawToken);
             }
             RawTokens.Clear();
@@ -83,11 +85,24 @@ namespace yupisoft.ConfigServer.Core
 
     public class ConfigServerTenants
     {
+        public event DataChangedEventHandler DataChanged;
+
         public List<ConfigServerTenant> Tenants { get; set; }
 
-        public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IServiceProvider serviceProvider, ILogger<ConfigServerTenant> logger)
+        public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger)
         {
-            Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t => new ConfigServerTenant(t, serviceProvider, logger)).ToList();
+            Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t =>
+            {
+                ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger);
+                tenant.DataChanged += Tenant_DataChanged;
+                return tenant;
+            }).ToList();
         }
+
+        private void Tenant_DataChanged(int tenantId, string entity, JToken diffToken)
+        {
+            DataChanged?.Invoke(tenantId, entity, diffToken);
+        }
+
     }
 }
