@@ -28,8 +28,8 @@
             ILoggerFactory loggerFactory,
             IConfiguration configuration)
         {
-            loggerFactory.AddConsole(configuration.GetSection("Logging"));
-            loggerFactory.AddDebug();
+            //loggerFactory.AddConsole(configuration.GetSection("Logging"));
+            //loggerFactory.AddDebug();
 
             loggerFactory.AddNLog();
             app.AddNLogWeb();

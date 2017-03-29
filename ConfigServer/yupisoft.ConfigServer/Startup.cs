@@ -9,6 +9,7 @@ using yupisoft.ConfigServer.Core.Stores;
 using yupisoft.ConfigServer.Core.Watchers;
 using System.IO;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
 
 namespace yupisoft.ConfigServer
 {
@@ -38,6 +39,7 @@ namespace yupisoft.ConfigServer
             // Set the port of this server
             configuration["ConfigServer:OwnNodeName"] = Program.NodeName.ToString();
 
+
             // First add services that are intrinsic for ServiceCollection
             services.AddOptions();
             services.AddAuthentication();
@@ -45,6 +47,7 @@ namespace yupisoft.ConfigServer
             ConfigureAPISecurityServices(services);
             
             services.AddConfigServer(configuration, hostingEnvironment);
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
             //ConfigureCachingServices(services, configuration);
 

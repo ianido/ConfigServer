@@ -93,6 +93,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                         var newNode = new Node() { Id = node.Id, Active = true, Address = node.Address, Self = false, NodeConfig = node };
                         lock (_nodes)
                         {
+                            _logger.LogInformation("Adding New Node Id: " + newNode.Id + ".");
                             _nodes.Add(newNode);
                             _cfgChanger.AddClusterNode(node);
                         }
@@ -103,19 +104,19 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         public void HeartBeat(Node node)
         {
-            lock (node)
-            {   
-                if ((node.Self) || (node.InUse)) return;
-                if (node.SkipAttempts > 0)
-                {
-                    node.SkipAttempts--;
-                    return;
-                }                
-                HeartBeatMessageRequest request = new HeartBeatMessageRequest();
-                // ==========================================================================
-                // TODO : Create Request Message here.
-                // ==========================================================================
-                request.Nodes = _nodes.Select(e=>e.NodeConfig).ToArray();
+            if ((node.Self) || (node.InUse)) return;
+            if (node.SkipAttempts > 0)
+            {
+                node.SkipAttempts--;
+                return;
+            }
+            HeartBeatMessageRequest request = new HeartBeatMessageRequest();
+            // ==========================================================================
+            // TODO : Create Request Message here.
+            // ==========================================================================
+            try
+            {
+                request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
 
                 string msgData = JsonConvert.SerializeObject(request);
                 HttpClient client = new HttpClient();
@@ -127,6 +128,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 {
                     lock (node)
                     {
+                        _logger.LogTrace("Response from Heartbeat for node id: " + node.Id + " Status: " + a.Status );
                         try
                         {
                             if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
@@ -141,17 +143,17 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 node.Attempts = 0;
                                 node.SkipAttempts = 0;
                                 node.ResetLife();
-                                // ==========================================================================
-                                // TODO : Do Heartbeat operations here.
-                                // ==========================================================================
+                                    // ==========================================================================
+                                    // TODO : Do Heartbeat operations here.
+                                    // ==========================================================================
 
-                            }
-                            if ((a.Status == TaskStatus.Faulted) || (a.Status == TaskStatus.Canceled))
+                                }
+                            else
                             {
                                 node.Attempts++;
                                 _logger.LogError("Unable to contact node: " + node.Id + " attempt: " + node.Attempts);
-                            }                           
-                            
+                            }
+
                             if (node.Attempts >= _NodesMonitoringMaxAttempts)
                             {
                                 if (node.Life == 0)
@@ -165,7 +167,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                     _logger.LogError("Node " + node.Id + " disabled. ");
                                 }
                                 else
-                                {   
+                                {
                                     node.SkipAttempts = _NodesMonitoringSkipAttemptsOnFail;
                                     _logger.LogError("Node " + node.Id + " failed to heartbeat for " + node.Attempts + " attempts; setting node for " + node.SkipAttempts + " skip attemps.");
                                     node.Attempts = 0;
@@ -173,13 +175,27 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 }
                             }
                         }
+                        catch (Exception ex)
+                        {
+                            _logger.LogCritical("Exception procesing node: " + node.Id + ex.ToString());
+                        }
                         finally
                         {
                             node.InUse = false;
                         }
                     }
                 });
+
             }
+            catch (Exception ex)
+            {
+                _logger.LogCritical("Exception procesing node: " + node.Id + ex.ToString());
+            }
+            finally
+            {
+                node.InUse = true;
+            }
+
         }
 
         private void Timer_Elapsed(object state)
@@ -192,9 +208,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
             foreach (var w in nodes)
             {
-                if (w.Active)
+                lock (w)
                 {
-                    HeartBeat(w);                    
+                    if (w.Active)
+                    {
+                        HeartBeat(w);
+                    }
                 }
             }
             _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat); // Reenable the timer;
