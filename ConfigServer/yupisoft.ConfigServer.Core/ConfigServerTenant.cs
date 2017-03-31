@@ -10,20 +10,38 @@ using Newtonsoft.Json.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 using yupisoft.ConfigServer.Core.Cluster;
+using yupisoft.ConfigServer.Core.Utils;
 
 namespace yupisoft.ConfigServer.Core
 {
-
-    public delegate void DataChangedEventHandler(int tenantId, string entity, JToken diffToken);
+    public class LoadDataResult
+    {
+        public string DataHash { get; set; }
+        public EntityChanges[] Changes { get; set; }
+    }
+    public class EntityChanges
+    {
+        public string entity { get; set; }
+        public JToken diffToken { get; set; }
+    }
     public class ConfigServerTenant
     {
-        public event DataChangedEventHandler DataChanged;
-
         public TenantConfigSection TenantConfig { get; set; }
         public IStoreProvider Store { get; }
         public string StartEntityName { get { return Store.StartEntityName; } }
         public JToken Token { get; set; }
         public Dictionary<string, JToken> RawTokens { get; set; }
+
+        public string DataHash {
+            get
+            {
+                string allData = "";
+                foreach(var v in RawTokens)
+                    allData += v.Value.ToString(Newtonsoft.Json.Formatting.None);                    
+                ulong dataHash = StringHandling.CalculateHash(allData.ToString());
+                return dataHash.ToString();
+            }
+        }
         private ILogger _logger { get; set; }
 
         public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger)
@@ -57,8 +75,9 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
-        public void Load(bool startingUp)
+        public LoadDataResult Load(bool startingUp)
         {
+            List<EntityChanges> tchanges = new List<EntityChanges>();
             Store.Watcher.StopMonitoring();
             Store.Watcher.ClearWatcher();
             Token = Store.Get(StartEntityName);
@@ -69,24 +88,22 @@ namespace yupisoft.ConfigServer.Core
                 var rawToken = Store.GetRaw(entity);
                 if (!startingUp && RawTokens.ContainsKey(entity))
                 {
-                    var previousToken = RawTokens["entity"];
+                    var previousToken = RawTokens[entity];
                     var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
                     JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
-                    DataChanged?.Invoke(TenantConfig.Id, entity, diffToken);
+                    tchanges.Add(new EntityChanges() { entity = entity, diffToken = diffToken });
                 }
-
                 newRawTokens.Add(entity, rawToken);
             }
             RawTokens.Clear();
             RawTokens = newRawTokens;
             Store.Watcher.StartMonitoring();
+            return new LoadDataResult() { Changes = tchanges.ToArray(), DataHash = this.DataHash };
         }
     }
 
     public class ConfigServerTenants
     {
-        public event DataChangedEventHandler DataChanged;
-
         public List<ConfigServerTenant> Tenants { get; set; }
 
         public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger)
@@ -94,15 +111,10 @@ namespace yupisoft.ConfigServer.Core
             Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t =>
             {
                 ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger);
-                tenant.DataChanged += Tenant_DataChanged;
                 return tenant;
             }).ToList();
         }
 
-        private void Tenant_DataChanged(int tenantId, string entity, JToken diffToken)
-        {
-            DataChanged?.Invoke(tenantId, entity, diffToken);
-        }
 
     }
 }

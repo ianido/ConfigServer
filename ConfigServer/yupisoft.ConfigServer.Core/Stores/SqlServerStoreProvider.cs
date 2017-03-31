@@ -86,16 +86,25 @@ namespace yupisoft.ConfigServer.Core.Stores
             SqlConnection conn = new SqlConnection(ConnectionString);
             SqlCommand cmdExist = new SqlCommand("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @entity", conn);
             cmdExist.Parameters.AddWithValue("@entity", entityName);
-            SqlCommand cmd = new SqlCommand("select top 1 node from " + entityName + " orderby created desc", conn);
+            SqlCommand cmd = new SqlCommand("select top 1 node, created from " + entityName + " orderby created desc", conn);
             try
             {
                 string content = null;
+                DateTime updated = DateTime.MinValue;
                 conn.Open();
                 if ((int)cmdExist.ExecuteScalar() == 0)
                     content = "{}";
                 else
-                    content = (string)cmd.ExecuteScalar();
-                _watcher.AddToWatcher(entityName, ConnectionString);                
+                {
+
+                    var dr = cmd.ExecuteReader();
+                    if (dr.Read())
+                    {
+                        content = dr.GetString(0);
+                        updated = dr.GetDateTime(1);
+                    }
+                }
+                _watcher.AddToWatcher(entityName, ConnectionString, updated);                
                 return content;
             }
             catch (Exception ex)

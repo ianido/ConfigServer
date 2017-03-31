@@ -1,4 +1,6 @@
-﻿namespace yupisoft.ConfigServer.Core
+﻿using System;
+
+namespace yupisoft.ConfigServer.Core
 {
 
     public delegate void ChangeDetection(object sender, string entityName);
@@ -8,7 +10,7 @@
         string[] GetEntities();
 
         bool IsWatching(string entityName);
-        void AddToWatcher(string entityName, string connection);
+        void AddToWatcher(string entityName, string connection, DateTime lastUpdate);
         void ClearWatcher();
         void StartMonitoring();
         void StopMonitoring();

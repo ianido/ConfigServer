@@ -1,6 +1,7 @@
 ﻿
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace yupisoft.ConfigServer.Core.Cluster
 {
@@ -17,8 +18,18 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public SelfNode() : base()
         {
             Status = SelfNodeStatus.Normal;
+            LogMessages = new List<LogMessage>();
             Self = true;
             Life = 2;
+        }
+
+        public long LastLogId {
+            get
+            {
+                if (LogMessages.Count > 0)
+                    return LogMessages.Last().LogId;
+                return 0;
+            }            
         }
     }
 }

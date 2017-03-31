@@ -87,132 +87,266 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         private void _cfgServer_DataChanged(int tenantId, string entity, JToken diffToken)
         {
-            LogMessage lm = new LogMessage() { Entity = entity, TenantId = tenantId, JsonDiff = diffToken.ToString(Formatting.None) };
-            lm.LogId = (selfNode.LogMessages.Count > 0) ? selfNode.LogMessages.Last().LogId : 1;
-            selfNode.LogMessages.Add(lm);
+            _logger.LogInformation("Data changed Tenant " + tenantId + " entity: " + entity + " diff:" + diffToken?.ToString());
+
+            LogMessage lm = new LogMessage() { Entity = entity, TenantId = tenantId, JsonDiff = diffToken?.ToString(Formatting.None) };
+            lock (selfNode)
+            {                
+                lm.LogId = (selfNode.LogMessages.Count > 0) ? (selfNode.LogMessages.Last().LogId + 1) : 1;
+                selfNode.LogMessages.Add(lm);
+            }
         }
 
         public HeartBeatMessageResponse ProcessHeartBeat(HeartBeatMessageRequest request)
         {
-            UpdateNodes(request.Nodes);
-            if (selfNode.InUse)
+            lock (selfNode)
             {
                 HeartBeatMessageResponse response = new HeartBeatMessageResponse();
                 response.Created = DateTime.UtcNow;
-                response.Command = HeartBeartCommand.InUse;
-                _logger.LogTrace("Node in Use; ignoring HeartBeat cmd: " + request.Command.ToString());
-                return response;
-            }
+                response.NodeAliveSince = _cfgServer.AliveSince;
+                response.LastLogId = selfNode.LastLogId;
+                UpdateNodes(request.Nodes);
 
-            if (request.Command == HeartBeartCommand.SyncRequest)
-            {
-                HeartBeatMessageResponse response = new HeartBeatMessageResponse();
-                response.Created = DateTime.UtcNow;
-                response.Command = HeartBeartCommand.SyncResponse;
-                lock (selfNode)
+                if (selfNode.InUse)
                 {
-                    response.Log = selfNode.LogMessages.Where(l => l.LogId > request.LastLogId).ToList();
+                    _logger.LogTrace("Node in Use; Ignoring HeartBeat: " + request.Command);
+                    response.Command = HeartBeartCommand.InUse;
                     response.LastLogId = selfNode.LastLogId;
+                    return response;
                 }
-            }
 
-            if (request.Command == HeartBeartCommand.HeartBeatRequest)
-            {
-                HeartBeatMessageResponse response = new HeartBeatMessageResponse();
-                response.Created = DateTime.UtcNow;
-                response.Command = HeartBeartCommand.HeartBeatResponse;
-                lock (selfNode)
+                if (request.Command == HeartBeartCommand.SyncRequest)
                 {
-                    response.LastLogId = selfNode.LastLogId;
-                    response.NodeId = selfNode.Id;
-                    if (selfNode.LastLogId < request.LastLogId) // My LogId is not updated
+                    _logger.LogTrace("SyncRequest received from Node: " + request.NodeId);
+                    response.Command = HeartBeartCommand.SyncResponse;
+                    lock (selfNode)
                     {
-                        selfNode.Status = SelfNodeStatus.Unsyncronized;
-                        HeartBeatMessageRequest req = new HeartBeatMessageRequest();
-                        req.Command = HeartBeartCommand.SyncRequest;
-                        req.NodeId = selfNode.Id;
-                        lock (_nodes) request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
-                        string msgData = JsonConvert.SerializeObject(request);
-                        HttpClient client = new HttpClient();
-                        Node requestNode = null;
-                        lock (_nodes) { requestNode = _nodes.FirstOrDefault(n => n.Id == request.NodeId); }
+                        response.Log = selfNode.LogMessages.Where(l => l.LogId > request.LastLogId).ToList();
+                    }
+                    return response;
+                }
 
-                        _logger.LogTrace("Node: " + requestNode.Id + " -> HeartBeat<Sync>");
-                        selfNode.InUse = true;
-                        requestNode.InUse = true;
-
-                        client.PostAsync(requestNode.Address + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json")).ContinueWith((a) =>
+                if (request.Command == HeartBeartCommand.FullSyncRequest)
+                {
+                    _logger.LogTrace("FullSyncRequest received from Node: " + request.NodeId);
+                    response.Command = HeartBeartCommand.FullSyncResponse;
+                    lock (selfNode)
+                    {
+                        if (request.Log.Count > 0)
                         {
-                            lock (selfNode)
+                            List<LogMessage> logToUpdate = new List<LogMessage>();
+                            foreach (LogMessage msg in request.Log)
                             {
-                                _logger.LogTrace("Response from HeartBeat<Sync> for node id: " + requestNode.Id + " Status: " + a.Status);
-                                try
+                                ConfigServerTenant tenant = _cfgServer.TenantManager.Tenants.FirstOrDefault(t => t.TenantConfig.Id == msg.TenantId);
+                                LogMessage lmsg = new LogMessage()
                                 {
-                                    if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
-                                    {
-                                        ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
-                                        if (rsMsg.Item == null)
-                                        {
-                                            _logger.LogError("Node: " + requestNode.Id + " do not return valid response. <null>");
-                                            return;
-                                        }
-                                    
-                                        if (rsMsg.Item.Command != HeartBeartCommand.SyncResponse)
-                                        {
-                                            _logger.LogError("Node: " + requestNode.Id + " do not return valid command: " + rsMsg.Item.Command.ToString() + " expected: " + HeartBeartCommand.SyncResponse.ToString());
-                                            return;
-                                        }
+                                    LogId = selfNode.LastLogId,
+                                    Full = true,
+                                    Entity = tenant.StartEntityName,
+                                    TenantId = tenant.TenantConfig.Id,
+                                    JsonDiff = _cfgServer.GetRaw("", tenant.StartEntityName, tenant.TenantConfig.Id).Value.ToString()
+                                };
+                                logToUpdate.Add(lmsg);
+                            }
+                            response.Log = logToUpdate;
+                        }
+                    }
+                    return response;
+                }
 
-                                        if (rsMsg.Item.Log == null)
-                                        {
-                                            _logger.LogError("Node: " + requestNode.Id + " do not return valid response <log null>. ");
-                                            return;
-                                        }
+                if (request.Command == HeartBeartCommand.HeartBeatRequest)
+                {
+                    _logger.LogTrace("HeartBeatRequest received from Node: " + request.NodeId);
+                    response.Command = HeartBeartCommand.HeartBeatResponse;
+                    lock (selfNode)
+                    {
+                        response.LastLogId = selfNode.LastLogId;
+                        response.NodeId = selfNode.Id;
+                        if ((selfNode.LastLogId == 0) && (_cfgServer.AliveSince > request.NodeAliveSince))
+                        {
+                            // Mejor pido un FullSync
+                            // El nodo que esta haciendo el request fue creado antes, so, voy a verificar si el hash mio es igual que el de el.
+                            List<int> TenantsToUpgrade = new List<int>();
+                            var DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+                            // Check DataHash
+                            foreach (var dh in DataHash)
+                            {
+                                if (request.DataHash.FirstOrDefault(e => e.Key == dh.Key).Value != dh.Value)
+                                    TenantsToUpgrade.Add(dh.Key);
+                            }
 
-                                        if (rsMsg.Item.Log.Count == 0)
-                                        {
-                                            _logger.LogError("Node: " + requestNode.Id + " do not return valid response <log empty>. ");
-                                            return;
-                                        }
+                            if (TenantsToUpgrade.Count > 0)
+                            {
+                                selfNode.Status = SelfNodeStatus.Unsyncronized;
+                                HeartBeatSyncRequest(request.NodeId, response, true, TenantsToUpgrade.ToArray());
+                            } 
+                        }
+                        else
+                        if (selfNode.LastLogId > request.LastLogId) // My LogId is updated
+                        {
+                            _logger.LogTrace("Remote Node: " + request.NodeId + " needs upgrade, SelfLog: " + selfNode.LastLogId + " versus:" + request.LastLogId);
+                        }
+                        else
+                        if (selfNode.LastLogId < request.LastLogId) // My LogId is not updated
+                        {
+                            try
+                            {
+                                _logger.LogTrace("Self Node needs upgrade from: " + request.NodeId + ", SelfLog: " + selfNode.LastLogId + " versus:" + request.LastLogId);
+                                selfNode.Status = SelfNodeStatus.Unsyncronized;
 
-                                        var logsToApply = rsMsg.Item.Log.Where(l => l.LogId > selfNode.LastLogId);
-
-                                        foreach (var log in logsToApply)
-                                        {
-                                            // Apply JsonDiff
-                                            bool applied = _cfgServer.ApplyUpdate(log.TenantId, log.Entity, log.JsonDiff);
-                                            if (applied) selfNode.LastLogId = log.LogId;
-                                        }
-                                        _logger.LogInformation("Node: " + requestNode.Id + " HeartBeat<sync> apply " + logsToApply.Count() + "logs successfully.");
-                                    }
-                                    else
-                                    {
-                                        _logger.LogError("Unable to contact node: " + requestNode.Id + " for sync. ");
-                                    }
+                                HeartBeatSyncRequest(request.NodeId, response, false);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
+                            }
+                        }
+                        else
+                        {
+                            if (_cfgServer.AliveSince > request.NodeAliveSince)
+                            {
+                                // El nodo que esta haciendo el request fue creado antes, so, voy a verificar si el hash mio es igual que el de el.
+                                List<int> TenantsToUpgrade = new List<int>();
+                                var DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+                                // Check DataHash
+                                foreach (var dh in DataHash)
+                                {
+                                    if (request.DataHash.FirstOrDefault(e => e.Key == dh.Key).Value != dh.Value)
+                                        TenantsToUpgrade.Add(dh.Key);
                                 }
-                                catch (Exception ex)
+
+                                if (TenantsToUpgrade.Count > 0)
                                 {
-                                    _logger.LogCritical("Exception procesing node: " + requestNode.Id + ex.ToString());
-                                }
-                                finally
-                                {
-                                    requestNode.InUse = false;
-                                    selfNode.InUse = false;
+                                    selfNode.Status = SelfNodeStatus.Unsyncronized;
+                                    HeartBeatSyncRequest(request.NodeId, response, true, TenantsToUpgrade.ToArray());
                                 }
                             }
-                        });
+                        }
+                        // Now Request for syncronization
                     }
-                    // Now Request for syncronization
+                    return response;
                 }
+
+                response.Command = HeartBeartCommand.Unknow;
+                response.Result = HeartBeartCommandResult.Error;
+                _logger.LogTrace("Unknow command: " + request.Command.ToString());
                 return response;
-
             }
+        }
 
-            HeartBeatMessageResponse res = new HeartBeatMessageResponse();
-            res.Created = DateTime.UtcNow;
-            res.Command = HeartBeartCommand.Unknow;
-            _logger.LogTrace("Unknow command: " + request.Command.ToString());
-            return res;
+        public void HeartBeatSyncRequest(string NodeId, HeartBeatMessageResponse response, bool fullSync, int[] tenants = null)
+        {
+            HeartBeatMessageRequest req = new HeartBeatMessageRequest();
+            req.Command = (fullSync ? HeartBeartCommand.FullSyncRequest : HeartBeartCommand.SyncRequest);
+            req.Created = DateTime.UtcNow;
+            req.NodeId = selfNode.Id;
+            req.NodeAliveSince = _cfgServer.AliveSince;
+            req.LastLogId = selfNode.LastLogId;
+            req.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+
+            lock (_nodes) req.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
+            if (tenants != null)
+            {
+                foreach (int t in tenants)
+                {
+                    req.Log.Add(new LogMessage() { Entity = "default", TenantId = t, JsonDiff = null, LogId = 0 });
+                }
+            }
+            string msgData = JsonConvert.SerializeObject(req);
+            HttpClient client = new HttpClient();
+            Node requestNode = null;
+            lock (_nodes) { requestNode = _nodes.FirstOrDefault(n => n.Id == NodeId); }
+            if (requestNode == null)
+            {
+                _logger.LogError("Node: " + NodeId + " not found in node list. Aborting upgrade.");
+                response.Result = HeartBeartCommandResult.Error;
+            }
+            else
+            {
+                _logger.LogTrace((fullSync? "FullSyncRequest": "SyncRequest") + " --> " + requestNode.Id);
+                response.Result = HeartBeartCommandResult.Success;
+                selfNode.InUse = true;
+                requestNode.InUse = true;
+                client.PostAsync(requestNode.Address + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json")).ContinueWith((a) =>
+                {
+                    lock (selfNode)
+                    {
+                        try
+                        {
+                            _logger.LogTrace("Received from " + requestNode.Id + " HeartBeat<Sync> ST:" + a.Status);
+                            if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
+                            {
+                                ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
+                                if (rsMsg.Item == null)
+                                {
+                                    _logger.LogError("Node: " + requestNode.Id + " do not return valid response. <null>");
+                                    return;
+                                }
+
+                                if ((rsMsg.Item.Command != HeartBeartCommand.SyncResponse) && (rsMsg.Item.Command != HeartBeartCommand.FullSyncResponse))
+                                {
+                                    _logger.LogError("Node: " + requestNode.Id + " do not return valid command: " + rsMsg.Item.Command.ToString());
+                                    return;
+                                }
+
+                                if (rsMsg.Item.Log == null)
+                                {
+                                    _logger.LogError("Node: " + requestNode.Id + " do not return valid response <log null>. ");
+                                    return;
+                                }
+
+                                if (rsMsg.Item.Log.Count == 0)
+                                {
+                                    _logger.LogError("Node: " + requestNode.Id + " do not return valid response <log empty>. ");
+                                    return;
+                                }
+
+                                IEnumerable<LogMessage> logsToApply = null;
+
+                                if (rsMsg.Item.Command == HeartBeartCommand.SyncResponse)
+                                {
+                                    logsToApply = rsMsg.Item.Log.Where(l => l.LogId > selfNode.LastLogId);
+                                    foreach (var log in logsToApply)
+                                    {
+                                        bool applied = false;
+                                        if (log.Full)
+                                            applied = _cfgServer.Set(new TNode("", JToken.Parse(log.JsonDiff), log.Entity), log.TenantId, true);
+                                         else 
+                                            applied = _cfgServer.ApplyUpdate(log.TenantId, log.Entity, log.JsonDiff);
+                                        if (applied) selfNode.LogMessages.Add(log);
+                                    }
+                                    _logger.LogInformation("Applied " + logsToApply.Count() + " logs successfully.");
+                                }
+
+                                if (rsMsg.Item.Command == HeartBeartCommand.FullSyncResponse)
+                                {
+                                    foreach (var log in rsMsg.Item.Log)
+                                    {
+                                        TNode node = new TNode("", JToken.Parse(log.JsonDiff), log.Entity);
+                                        bool applied = _cfgServer.Set(node, log.TenantId, true);
+                                        if (applied) selfNode.LogMessages.Add(log);
+                                    }
+                                    _logger.LogInformation("FullSync Applied successfully.");
+                                }
+                                
+                            }
+                            else
+                            {
+                                _logger.LogError("Unable to contact: " + requestNode.Id + " for sync. ");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogCritical("Exception procesing response from node: " + requestNode.Id + "\r\n" + ex.ToString());
+                        }
+                        finally
+                        {
+                            requestNode.InUse = false;
+                            selfNode.InUse = false;
+                        }
+                    }
+                });
+            }
         }
 
         public void UpdateNodes(NodeConfigSection[] nodesConfig)
@@ -251,87 +385,90 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 return;
             }
             try
-            {   
+            {
                 // ==========================================================================
                 //  Create Request Message here.
                 // ==========================================================================
 
-                HeartBeatMessageRequest request = new HeartBeatMessageRequest();
-                request.Command = HeartBeartCommand.HeartBeatRequest;
-                request.NodeId = selfNode.Id;
-                lock (_nodes) request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
-                string msgData = JsonConvert.SerializeObject(request);
-                HttpClient client = new HttpClient();
-                _logger.LogTrace("Node: " + node.Id + " heartbeat");
-                node.InUse = true;
-
-                client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8, "application/json")).ContinueWith((a) =>
+                lock (selfNode)
                 {
-                    lock (node)
-                    {
-                        _logger.LogTrace("Response from Heartbeat for node id: " + node.Id + " Status: " + a.Status );
-                        try
-                        {
-                            if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
-                            {
-                                ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
-                                if (rsMsg.Item == null)
-                                {
-                                    _logger.LogError("Node: " + node.Id + " do not return valid response. attempt: " + node.Attempts);
-                                    node.Attempts++;
-                                }
-                                _logger.LogInformation("Node: " + node.Id + " heartbeat successfully.");
-                                node.Attempts = 0;
-                                node.SkipAttempts = 0;
-                                node.ResetLife();
-                            }
-                            else
-                            {
-                                node.Attempts++;
-                                _logger.LogError("Unable to contact node: " + node.Id + " attempt: " + node.Attempts);
-                            }
+                    HeartBeatMessageRequest request = new HeartBeatMessageRequest();
+                    request.Created = DateTime.UtcNow;
+                    request.Command = HeartBeartCommand.HeartBeatRequest;
+                    request.NodeId = selfNode.Id;
+                    request.NodeAliveSince = _cfgServer.AliveSince;
+                    request.LastLogId = selfNode.LastLogId;
+                    request.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+                    lock (_nodes) request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
 
-                            if (node.Attempts >= _NodesMonitoringMaxAttempts)
+                    string msgData = JsonConvert.SerializeObject(request);
+                    HttpClient client = new HttpClient();
+                    _logger.LogTrace("HeartBeat --> " + node.Id + " Hash:" + request.DataHash[0].Value + " Log:" + selfNode.LastLogId);
+                    node.InUse = true;
+
+                    client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8, "application/json")).ContinueWith((a) =>
+                    {
+                        lock (node)
+                        {
+                            _logger.LogTrace("Received from: " + node.Id + " HeartBeat ST: " + a.Status);
+                            try
                             {
-                                if (node.Life == 0)
+                                if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
                                 {
-                                    lock (_cfgChanger)
+                                    ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
+                                    if (rsMsg.Item == null)
                                     {
-                                        _cfgChanger.DisableClusterNode(node.Id);
-                                        node.Active = false;
+                                        _logger.LogError("Node: " + node.Id + " return Invalid response. attempt: " + node.Attempts);
+                                        node.Attempts++;
                                     }
+                                    _logger.LogInformation("Heartbeat from " + node.Id + " successfully.");
                                     node.Attempts = 0;
-                                    _logger.LogError("Node " + node.Id + " disabled. ");
+                                    node.SkipAttempts = 0;
+                                    node.ResetLife();
                                 }
                                 else
                                 {
-                                    node.SkipAttempts = _NodesMonitoringSkipAttemptsOnFail;
-                                    _logger.LogError("Node " + node.Id + " failed to heartbeat for " + node.Attempts + " attempts; setting node for " + node.SkipAttempts + " skip attemps.");
-                                    node.Attempts = 0;
-                                    node.Life--;
+                                    node.Attempts++;
+                                    _logger.LogError("Unable to contact: " + node.Id + " attempt: " + node.Attempts);
+                                }
+
+                                if (node.Attempts >= _NodesMonitoringMaxAttempts)
+                                {
+                                    if (node.Life == 0)
+                                    {
+                                        lock (_cfgChanger)
+                                        {
+                                            _cfgChanger.DisableClusterNode(node.Id);
+                                            node.Active = false;
+                                        }
+                                        node.Attempts = 0;
+                                        _logger.LogError("Node " + node.Id + " life out; Disabled. ");
+                                    }
+                                    else
+                                    {
+                                        node.SkipAttempts = _NodesMonitoringSkipAttemptsOnFail;
+                                        _logger.LogError("Heartbeat failed to " + node.Id + " " + node.Attempts + " attempts; Skip: " + node.SkipAttempts);
+                                        node.Attempts = 0;
+                                        node.Life--;
+                                    }
                                 }
                             }
+                            catch (Exception ex)
+                            {
+                                _logger.LogCritical("Exception heartbeating node: " + node.Id + ex.ToString());
+                            }
+                            finally
+                            {
+                                node.InUse = false;
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogCritical("Exception procesing node: " + node.Id + ex.ToString());
-                        }
-                        finally
-                        {
-                            node.InUse = false;
-                        }
-                    }
-                });
-
+                    });
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogCritical("Exception procesing node: " + node.Id + ex.ToString());
-            }
-            finally
-            {
-                node.InUse = true;
-            }
+                _logger.LogCritical("Exception processing node: " + node.Id + ex.ToString());
+            }           
 
         }
 

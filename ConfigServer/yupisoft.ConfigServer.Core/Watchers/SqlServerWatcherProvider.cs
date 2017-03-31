@@ -35,8 +35,26 @@ namespace yupisoft.ConfigServer.Core.Watchers
 
         public event EntityChangeEventHandler Changed;
 
+        public void RestartObservationDate()
+        {
+            SqlConnection conn = new SqlConnection(Connection);
+            SqlCommand cmd = new SqlCommand("select top 1 created from " + EntityName + " orderby created desc", conn);
+            try
+            {
+                conn.Open();
+                var lastDate = (DateTime)cmd.ExecuteScalar();
+                LastWriteDate = lastDate;
+            }
+            finally
+            {
+                if (conn.State == System.Data.ConnectionState.Open)
+                    conn.Close();
+            }
+        }
+
         public void CheckForChange()
         {
+            if (!EnableRaisingEvents) return;
             SqlConnection conn = new SqlConnection(Connection);
             SqlCommand cmd = new SqlCommand("select top 1 created from " + EntityName + " orderby created desc", conn);
             try

@@ -48,6 +48,7 @@ namespace yupisoft.ConfigServer.Core.Watchers
 
         public void CheckForChange()
         {
+            if (!EnableRaisingEvents) return;
             var _client = new MongoClient(_connection);
             var _db = _client.GetDatabase(_dbmongo);
             if (_db == null) throw new Exception("No Database named: " + _dbmongo);
@@ -65,6 +66,20 @@ namespace yupisoft.ConfigServer.Core.Watchers
                 LastWriteDate = LastWriteTimeUtc;
                 EnableRaisingEvents = true;
             }           
+        }
+
+        public void RestartObservationDate()
+        {
+            var _client = new MongoClient(_connection);
+            var _db = _client.GetDatabase(_dbmongo);
+            if (_db == null) throw new Exception("No Database named: " + _dbmongo);
+
+            var collection = _db.GetCollection<BsonDocument>(EntityName);
+            if (collection == null) return;
+
+            var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
+            var LastWriteTimeUtc = v.First()["created"].ToUniversalTime();
+            LastWriteDate = LastWriteTimeUtc;            
         }
     }
 }

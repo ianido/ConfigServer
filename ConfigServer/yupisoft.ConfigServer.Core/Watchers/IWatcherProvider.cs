@@ -20,6 +20,8 @@ namespace yupisoft.ConfigServer.Core
 
         event EntityChangeEventHandler Changed;
 
-        void CheckForChange();        
+        void CheckForChange();
+
+        void RestartObservationDate();
     }
 }

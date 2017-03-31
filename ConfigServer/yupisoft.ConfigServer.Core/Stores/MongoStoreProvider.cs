@@ -28,8 +28,9 @@ namespace yupisoft.ConfigServer.Core.Stores
             if (collection == null) return null;
             var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
             var content = v.FirstOrDefault()?["node"]?.ToJson();
+            var created = v.FirstOrDefault()["created"].ToUniversalTime();
             if (content == null) content = "{}";
-            _watcher.AddToWatcher(entityName, MongoDatabase);
+            _watcher.AddToWatcher(entityName, MongoDatabase, created);
             return content;
         }
 

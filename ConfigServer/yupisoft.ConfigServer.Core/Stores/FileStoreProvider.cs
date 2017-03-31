@@ -49,30 +49,14 @@ namespace yupisoft.ConfigServer.Core.Stores
         private string GetContent(string entityName)
         {
             entityName = entityName.Replace("/", "\\");
-            string[] filesInFolder = Directory.GetFiles(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_*" + Path.GetExtension(entityName));
-            if (filesInFolder.Length == 0)
-                filesInFolder = Directory.GetFiles(FilePath, Path.GetFileName(entityName));
-            Dictionary<string, DateTime> arr = new Dictionary<string, DateTime>();
-            if (filesInFolder.Length == 0) return null;
-
-            foreach (var file in filesInFolder)
-            {
-                string[] fileParts = Path.GetFileNameWithoutExtension(file).Split('_');
-                var date = (fileParts.Length > 1) ? fileParts[1] : new FileInfo(file).LastWriteTimeUtc.ToString(FILEDATEFORMAT);
-                arr.Add(file, DateTime.ParseExact(date, FILEDATEFORMAT, null));
-            }
-
-            arr.OrderByDescending(e => e.Value);
-            var mostRecent = arr.Last();
-
-            string content = "";
-            string fullFilePath = mostRecent.Key;
             lock (FilePath)
             {
-                content = File.ReadAllText(fullFilePath);
-                _watcher.AddToWatcher(Path.GetFileName(fullFilePath), Path.GetDirectoryName(fullFilePath));
-            }
-            return content;
+                var fullFilePath = Path.Combine(FilePath, entityName);
+                var content = File.ReadAllText(fullFilePath);
+
+                _watcher.AddToWatcher(Path.GetFileName(fullFilePath), Path.GetDirectoryName(fullFilePath), new FileInfo(fullFilePath).LastWriteTimeUtc);
+                return content;
+            }            
         }
 
         public JToken Get(string entityName)
@@ -94,11 +78,13 @@ namespace yupisoft.ConfigServer.Core.Stores
         public void Set(JToken node, string entityName)
         {
             entityName = entityName.Replace("/", "\\");
-            string content = JsonConvert.SerializeObject(node);
+            string content = JsonConvert.SerializeObject(node, Formatting.Indented);
             lock (FilePath)
             {
-                string filePath = Path.Combine(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_" + DateTime.UtcNow.ToString(FILEDATEFORMAT) + Path.GetExtension(entityName));
-                File.WriteAllText(filePath, content);
+                var fullFilePath = Path.Combine(FilePath, entityName);                
+                string bkpfilePath = Path.Combine(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_" + DateTime.UtcNow.ToString(FILEDATEFORMAT) + Path.GetExtension(entityName));
+                File.Copy(fullFilePath, bkpfilePath);
+                File.WriteAllText(fullFilePath, content);
             }
         }
     }

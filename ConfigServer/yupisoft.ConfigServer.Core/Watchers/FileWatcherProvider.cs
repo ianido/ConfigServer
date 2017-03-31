@@ -28,6 +28,7 @@ namespace yupisoft.ConfigServer.Core.Watchers
         public event EntityChangeEventHandler Changed;
 
         public void CheckForChange() {
+            if (!EnableRaisingEvents) return;
             FileInfo fi = new FileInfo(Path.Combine(_connection,EntityName));
             if (fi.LastWriteTimeUtc != LastWriteDate)
             {
@@ -46,6 +47,12 @@ namespace yupisoft.ConfigServer.Core.Watchers
                 byte[] checksum = sha.ComputeHash(stream);
                 return BitConverter.ToString(checksum).Replace("-", String.Empty);
             }
+        }
+
+        public void RestartObservationDate()
+        {
+            FileInfo fi = new FileInfo(Path.Combine(_connection, EntityName));
+            LastWriteDate = fi.LastWriteTimeUtc;
         }
     }
 }

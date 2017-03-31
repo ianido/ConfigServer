@@ -10,12 +10,23 @@ namespace yupisoft.ConfigServer.Core.Cluster
         HeartBeatResponse,
         SyncRequest,
         SyncResponse,
+        FullSyncRequest,
+        FullSyncResponse,
         InUse,
         Unknow
+    }
+
+    public enum HeartBeartCommandResult
+    {
+        Success,
+        Abort,
+        Error
     }
     public class HeartBeatMessageRequest
     {
         public string NodeId { get; set; }
+        public DateTime NodeAliveSince { get; set; }
+        public KeyValuePair<int, string>[] DataHash { get; set; }
         public HeartBeartCommand Command { get; set; }
         public long LastLogId { get; set; }
         public DateTime Created { get; set; }
@@ -24,7 +35,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public HeartBeatMessageRequest()
         {
             Created = DateTime.UtcNow;
-            Log = null;
+            Log = new List<LogMessage>();
             Nodes = new NodeConfigSection[0];
             LastLogId = 0;
         }
@@ -32,11 +43,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
     public class HeartBeatMessageResponse
     {
-        public HeartBeartCommand Command { get; set; }
         public string NodeId { get; set; }
-
         public long LastLogId { get; set; }
+        public HeartBeartCommand Command { get; set; }
+        public DateTime NodeAliveSince { get; set; }
         public List<LogMessage> Log { get; set; }
         public DateTime Created { get; set; }
+        public HeartBeartCommandResult Result { get; set; }
     }
 }

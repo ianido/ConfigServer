@@ -54,7 +54,10 @@ namespace yupisoft.ConfigServer.Core
         {
             _timer.Change(Timeout.Infinite, FILEWATCHER_MILLESECONDS);
             foreach (var w in _watcher)
+            {
+                w.RestartObservationDate();
                 w.EnableRaisingEvents = true;
+            }
             _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS);
         }
 
@@ -66,12 +69,12 @@ namespace yupisoft.ConfigServer.Core
             _timer.Change(FILEWATCHER_MILLESECONDS, FILEWATCHER_MILLESECONDS);
         }
 
-        public void AddToWatcher(string entityName, string connection)
+        public void AddToWatcher(string entityName, string connection, DateTime lastUpdate)
         {
             if (_watcher.FirstOrDefault(f => f.EntityName == entityName) == null)
             {
                 T w = new T();
-                w.LastWriteDate = new FileInfo(Path.Combine(connection, entityName)).LastWriteTimeUtc;
+                w.LastWriteDate = lastUpdate;
                 w.Connection = connection;
                 w.EntityName = entityName;
                 w.Changed += W_Changed;

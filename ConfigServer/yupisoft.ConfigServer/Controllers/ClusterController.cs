@@ -31,12 +31,9 @@ namespace yupisoft.ConfigServer.Controllers
             try
             {
                 bool success = true;
-                result.Item = new HeartBeatMessageResponse();
                 if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
                     else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
-
-                _clsManager.ProcessHeartBeat(msg);
-
+                result.Item = _clsManager.ProcessHeartBeat(msg);
                 //_logger.LogInformation("Received Heartbeat");
             }
             catch (Exception ex)

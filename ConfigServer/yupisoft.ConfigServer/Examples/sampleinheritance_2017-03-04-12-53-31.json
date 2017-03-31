@@ -1,1 +1,0 @@
-{"configuration":{"base":{"field0":"value0","fieldA":"valueA"},"newobject":{"$inherits":"*configuration.baseobject","field0":"value0XY","field1":"value1XY","field2":"value2XY","array":[1,2,3]},"baseobject":{"field0":"value0X","fieldB":"value1","sub1":"sucio"}}}
