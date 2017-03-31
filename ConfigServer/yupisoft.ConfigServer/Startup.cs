@@ -38,6 +38,7 @@ namespace yupisoft.ConfigServer
         {
             // Set the port of this server
             configuration["ConfigServer:OwnNodeName"] = Program.NodeName.ToString();
+            configuration["ConfigServer:OwnNodeUrl"] = Program.NodeUrl.ToString();
 
 
             // First add services that are intrinsic for ServiceCollection

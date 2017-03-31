@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Hosting;
 using System.IO;
 using System.Diagnostics;
+using System;
 #if NET462
 using Microsoft.AspNetCore.Hosting.WindowsServices;
 #endif
@@ -9,29 +10,35 @@ namespace yupisoft.ConfigServer
 {
     public class Program
     {
-        public static int Port = 8002;
-        public static string NodeName = Port.ToString();
+        public static string NodeUrl = "http://localhost:8002";
+        public static string NodeName = "8002";
         static void Main(string[] args)
         {            
             if ((args != null) && (args.Length > 0))
             {
-                var sport = args.FirstOrDefault(p => p.StartsWith("port"));
-                if (sport != null)
+                var url = args.FirstOrDefault(p => p.StartsWith("-url"));
+                if (url != null)
                 {
-                    string[] v = sport.Split(':');
-                    if (v.Length > 1) Port = int.Parse(NodeName = v[1]);
-                }
-                var sNodeName = args.FirstOrDefault(p => p.StartsWith("node"));
+                    string[] v = url.Split(':');
+                    if (v.Length > 3) NodeUrl = v[1] + ":" + v[2] + ":" + v[3];
+                    else if (v.Length > 2) NodeUrl = v[1] + ":" + v[2];
+                    else if (v.Length > 1) NodeUrl = v[1];                    
+                }                
+                var sNodeName = args.FirstOrDefault(p => p.StartsWith("-node"));
                 if (sNodeName != null)
                 {
                     string[] v = sNodeName.Split(':');
                     if (v.Length > 1) NodeName = v[1];
+                } else
+                {
+                    Uri uri = new Uri(NodeUrl);
+                    NodeName = uri.Port.ToString();
                 }
             }
 
             var host = new WebHostBuilder()
                 .UseKestrel()
-                .UseUrls("http://localhost:" + Port)
+                .UseUrls(NodeUrl)
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseIISIntegration()
                 .UseStartup<Startup>()
@@ -42,7 +49,7 @@ namespace yupisoft.ConfigServer
 
 
 
-            if (Debugger.IsAttached || args.Contains("--debug"))
+            if (Debugger.IsAttached || args.Contains("-debug"))
             {
                 host.Run();
             }

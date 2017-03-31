@@ -6,6 +6,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 {
     public class LogMessage
     {
+        public DateTime Created { get; set; }
         public long LogId { get; set; }
         public bool Full { get; set; }
         public int TenantId { get; set; }

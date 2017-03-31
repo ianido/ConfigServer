@@ -17,6 +17,7 @@ namespace yupisoft.ConfigServer.Core
     public class ClusterConfigSection
     {
         public string OwnNodeName { get; set; }
+        public string OwnNodeUrl { get; set; }
         public int NodesMonitoringInterval { get; set; }
         public int NodesMonitoringMaxAttempts { get; set; }
         public int NodesMonitoringSkipAttemptsOnFail { get; set; }

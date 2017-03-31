@@ -29,6 +29,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public KeyValuePair<int, string>[] DataHash { get; set; }
         public HeartBeartCommand Command { get; set; }
         public long LastLogId { get; set; }
+        public DateTime LastLogDate { get; set; }
         public DateTime Created { get; set; }
         public List<LogMessage> Log { get; set; }
         public NodeConfigSection[] Nodes { get; set; }

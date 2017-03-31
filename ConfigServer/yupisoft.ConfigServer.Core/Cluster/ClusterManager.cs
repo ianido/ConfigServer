@@ -77,6 +77,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
             if (selfNode == null)
             {
+                var newNode = new SelfNode() { Id = clusterConfig.Value.OwnNodeName, Active = true, Address = clusterConfig.Value.OwnNodeUrl, NodeConfig = new NodeConfigSection(){ Id = clusterConfig.Value.OwnNodeName, Address= clusterConfig.Value.OwnNodeUrl, Enabled = true } };
+                _nodes.Add(newNode);
+            }
+
+            if (selfNode == null)
+            {
                 _logger.LogCritical("The current node is not in the Nodes List.");
                 Environment.Exit(1);
             }
@@ -89,12 +95,25 @@ namespace yupisoft.ConfigServer.Core.Cluster
         {
             _logger.LogInformation("Data changed Tenant " + tenantId + " entity: " + entity + " diff:" + diffToken?.ToString());
 
-            LogMessage lm = new LogMessage() { Entity = entity, TenantId = tenantId, JsonDiff = diffToken?.ToString(Formatting.None) };
+            LogMessage lm = new LogMessage() {Created = DateTime.UtcNow, Entity = entity, TenantId = tenantId, JsonDiff = diffToken?.ToString(Formatting.None) };
             lock (selfNode)
             {                
                 lm.LogId = (selfNode.LogMessages.Count > 0) ? (selfNode.LogMessages.Last().LogId + 1) : 1;
                 selfNode.LogMessages.Add(lm);
             }
+        }
+
+        public List<int> TenantsToUpgrade(KeyValuePair<int,string>[] dataHash)
+        {
+            List<int> TenantsToUpgrade = new List<int>();
+            var DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+            // Check DataHash
+            foreach (var dh in DataHash)
+            {
+                if (dataHash.FirstOrDefault(e => e.Key == dh.Key).Value != dh.Value)
+                    TenantsToUpgrade.Add(dh.Key);
+            }
+            return TenantsToUpgrade;
         }
 
         public HeartBeatMessageResponse ProcessHeartBeat(HeartBeatMessageRequest request)
@@ -140,6 +159,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 ConfigServerTenant tenant = _cfgServer.TenantManager.Tenants.FirstOrDefault(t => t.TenantConfig.Id == msg.TenantId);
                                 LogMessage lmsg = new LogMessage()
                                 {
+                                    Created = DateTime.UtcNow,
                                     LogId = selfNode.LastLogId,
                                     Full = true,
                                     Entity = tenant.StartEntityName,
@@ -162,23 +182,16 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     {
                         response.LastLogId = selfNode.LastLogId;
                         response.NodeId = selfNode.Id;
+                        // Si el nodo tiene Log 0 y fue creado despues que el nodo que hizo el request, deberemos comprobar el hash
                         if ((selfNode.LastLogId == 0) && (_cfgServer.AliveSince > request.NodeAliveSince))
                         {
-                            // Mejor pido un FullSync
-                            // El nodo que esta haciendo el request fue creado antes, so, voy a verificar si el hash mio es igual que el de el.
-                            List<int> TenantsToUpgrade = new List<int>();
-                            var DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
-                            // Check DataHash
-                            foreach (var dh in DataHash)
-                            {
-                                if (request.DataHash.FirstOrDefault(e => e.Key == dh.Key).Value != dh.Value)
-                                    TenantsToUpgrade.Add(dh.Key);
-                            }
+                            List<int> upgrade = TenantsToUpgrade(request.DataHash);
 
-                            if (TenantsToUpgrade.Count > 0)
+                            if (upgrade.Count > 0)
                             {
                                 selfNode.Status = SelfNodeStatus.Unsyncronized;
-                                HeartBeatSyncRequest(request.NodeId, response, true, TenantsToUpgrade.ToArray());
+                                // Tienen diferente hash, pedire una sincronizacion completa
+                                HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
                             } 
                         }
                         else
@@ -202,25 +215,37 @@ namespace yupisoft.ConfigServer.Core.Cluster
                             }
                         }
                         else
+                        if ((selfNode.LastLogId == request.LastLogId) && (selfNode.LastLogId > 0) && (selfNode.LastLogDate < request.LastLogDate)) 
                         {
-                            if (_cfgServer.AliveSince > request.NodeAliveSince)
+                            try
                             {
-                                // El nodo que esta haciendo el request fue creado antes, so, voy a verificar si el hash mio es igual que el de el.
-                                List<int> TenantsToUpgrade = new List<int>();
-                                var DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
-                                // Check DataHash
-                                foreach (var dh in DataHash)
-                                {
-                                    if (request.DataHash.FirstOrDefault(e => e.Key == dh.Key).Value != dh.Value)
-                                        TenantsToUpgrade.Add(dh.Key);
-                                }
+                                List<int> upgrade = TenantsToUpgrade(request.DataHash);
 
-                                if (TenantsToUpgrade.Count > 0)
+                                if (upgrade.Count > 0)
                                 {
                                     selfNode.Status = SelfNodeStatus.Unsyncronized;
-                                    HeartBeatSyncRequest(request.NodeId, response, true, TenantsToUpgrade.ToArray());
-                                }
+                                    HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
+                                }                                
                             }
+                            catch (Exception ex)
+                            {
+                                _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
+                            }
+                        }
+                        else
+                        {
+                            //_logger.LogCritical("Nothing to do to handle node: " + request.NodeId);
+                            //if (_cfgServer.AliveSince > request.NodeAliveSince)
+                            //{
+                            //    // El nodo que esta haciendo el request fue creado antes, so, voy a verificar si el hash mio es igual que el de el.
+                            //    List<int> upgrade = TenantsToUpgrade(request.DataHash);
+
+                            //    if (upgrade.Count > 0)
+                            //    {
+                            //        selfNode.Status = SelfNodeStatus.Unsyncronized;
+                            //        HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
+                            //    }
+                            //}
                         }
                         // Now Request for syncronization
                     }
@@ -242,6 +267,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             req.NodeId = selfNode.Id;
             req.NodeAliveSince = _cfgServer.AliveSince;
             req.LastLogId = selfNode.LastLogId;
+            req.LastLogDate = selfNode.LastLogDate;
             req.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
 
             lock (_nodes) req.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
@@ -249,7 +275,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             {
                 foreach (int t in tenants)
                 {
-                    req.Log.Add(new LogMessage() { Entity = "default", TenantId = t, JsonDiff = null, LogId = 0 });
+                    req.Log.Add(new LogMessage() { Created = DateTime.UtcNow, Entity = "default", TenantId = t, JsonDiff = null, LogId = 0 });
                 }
             }
             string msgData = JsonConvert.SerializeObject(req);
@@ -397,6 +423,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     request.Command = HeartBeartCommand.HeartBeatRequest;
                     request.NodeId = selfNode.Id;
                     request.NodeAliveSince = _cfgServer.AliveSince;
+                    request.LastLogDate = selfNode.LastLogDate;
                     request.LastLogId = selfNode.LastLogId;
                     request.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
                     lock (_nodes) request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();

@@ -1,5 +1,6 @@
 ﻿
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -30,6 +31,16 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     return LogMessages.Last().LogId;
                 return 0;
             }            
+        }
+
+        public DateTime LastLogDate
+        {
+            get
+            {
+                if (LogMessages.Count > 0)
+                    return LogMessages.Last().Created;
+                return DateTime.MaxValue;
+            }
         }
     }
 }
