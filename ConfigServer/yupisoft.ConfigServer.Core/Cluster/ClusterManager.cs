@@ -124,6 +124,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 response.Created = DateTime.UtcNow;
                 response.NodeAliveSince = _cfgServer.AliveSince;
                 response.LastLogId = selfNode.LastLogId;
+                response.NodeId = selfNode.Id;
                 UpdateNodes(request.Nodes);
 
                 if (selfNode.InUse)
@@ -138,10 +139,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 {
                     _logger.LogTrace("SyncRequest received from Node: " + request.NodeId);
                     response.Command = HeartBeartCommand.SyncResponse;
-                    lock (selfNode)
-                    {
-                        response.Log = selfNode.LogMessages.Where(l => l.LogId > request.LastLogId).ToList();
-                    }
+
+                    response.Log = selfNode.LogMessages.Where(l => l.LogId > request.LastLogId).ToList();
                     return response;
                 }
 
@@ -149,27 +148,24 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 {
                     _logger.LogTrace("FullSyncRequest received from Node: " + request.NodeId);
                     response.Command = HeartBeartCommand.FullSyncResponse;
-                    lock (selfNode)
+                    if (request.Log.Count > 0)
                     {
-                        if (request.Log.Count > 0)
+                        List<LogMessage> logToUpdate = new List<LogMessage>();
+                        foreach (LogMessage msg in request.Log)
                         {
-                            List<LogMessage> logToUpdate = new List<LogMessage>();
-                            foreach (LogMessage msg in request.Log)
+                            ConfigServerTenant tenant = _cfgServer.TenantManager.Tenants.FirstOrDefault(t => t.TenantConfig.Id == msg.TenantId);
+                            LogMessage lmsg = new LogMessage()
                             {
-                                ConfigServerTenant tenant = _cfgServer.TenantManager.Tenants.FirstOrDefault(t => t.TenantConfig.Id == msg.TenantId);
-                                LogMessage lmsg = new LogMessage()
-                                {
-                                    Created = DateTime.UtcNow,
-                                    LogId = selfNode.LastLogId,
-                                    Full = true,
-                                    Entity = tenant.StartEntityName,
-                                    TenantId = tenant.TenantConfig.Id,
-                                    JsonDiff = _cfgServer.GetRaw("", tenant.StartEntityName, tenant.TenantConfig.Id).Value.ToString()
-                                };
-                                logToUpdate.Add(lmsg);
-                            }
-                            response.Log = logToUpdate;
+                                Created = DateTime.UtcNow,
+                                LogId = selfNode.LastLogId,
+                                Full = true,
+                                Entity = tenant.StartEntityName,
+                                TenantId = tenant.TenantConfig.Id,
+                                JsonDiff = _cfgServer.GetRaw("", tenant.StartEntityName, tenant.TenantConfig.Id).Value.ToString()
+                            };
+                            logToUpdate.Add(lmsg);
                         }
+                        response.Log = logToUpdate;
                     }
                     return response;
                 }
@@ -178,76 +174,70 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 {
                     _logger.LogTrace("HeartBeatRequest received from Node: " + request.NodeId);
                     response.Command = HeartBeartCommand.HeartBeatResponse;
-                    lock (selfNode)
+                    // Si el nodo tiene Log 0 y fue creado despues que el nodo que hizo el request, deberemos comprobar el hash
+                    if ((selfNode.LastLogId == 0) && (_cfgServer.AliveSince > request.NodeAliveSince))
                     {
-                        response.LastLogId = selfNode.LastLogId;
-                        response.NodeId = selfNode.Id;
-                        // Si el nodo tiene Log 0 y fue creado despues que el nodo que hizo el request, deberemos comprobar el hash
-                        if ((selfNode.LastLogId == 0) && (_cfgServer.AliveSince > request.NodeAliveSince))
+                        List<int> upgrade = TenantsToUpgrade(request.DataHash);
+
+                        if (upgrade.Count > 0)
+                        {
+                            selfNode.Status = SelfNodeStatus.Unsyncronized;
+                            // Tienen diferente hash, pedire una sincronizacion completa
+                            HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
+                        }
+                    }
+                    else
+                    if (selfNode.LastLogId > request.LastLogId) // My LogId is updated
+                    {
+                        _logger.LogTrace("Remote Node: " + request.NodeId + " needs upgrade, SelfLog: " + selfNode.LastLogId + " versus:" + request.LastLogId);
+                    }
+                    else
+                    if (selfNode.LastLogId < request.LastLogId) // My LogId is not updated
+                    {
+                        try
+                        {
+                            _logger.LogTrace("Self Node needs upgrade from: " + request.NodeId + ", SelfLog: " + selfNode.LastLogId + " versus:" + request.LastLogId);
+                            selfNode.Status = SelfNodeStatus.Unsyncronized;
+
+                            HeartBeatSyncRequest(request.NodeId, response, false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
+                        }
+                    }
+                    else
+                    if ((selfNode.LastLogId == request.LastLogId) && (selfNode.LastLogId > 0) && (selfNode.LastLogDate < request.LastLogDate))
+                    {
+                        try
                         {
                             List<int> upgrade = TenantsToUpgrade(request.DataHash);
 
                             if (upgrade.Count > 0)
                             {
                                 selfNode.Status = SelfNodeStatus.Unsyncronized;
-                                // Tienen diferente hash, pedire una sincronizacion completa
                                 HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
-                            } 
+                            }
                         }
-                        else
-                        if (selfNode.LastLogId > request.LastLogId) // My LogId is updated
+                        catch (Exception ex)
                         {
-                            _logger.LogTrace("Remote Node: " + request.NodeId + " needs upgrade, SelfLog: " + selfNode.LastLogId + " versus:" + request.LastLogId);
+                            _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
                         }
-                        else
-                        if (selfNode.LastLogId < request.LastLogId) // My LogId is not updated
-                        {
-                            try
-                            {
-                                _logger.LogTrace("Self Node needs upgrade from: " + request.NodeId + ", SelfLog: " + selfNode.LastLogId + " versus:" + request.LastLogId);
-                                selfNode.Status = SelfNodeStatus.Unsyncronized;
+                    }
+                    else
+                    {
+                        //_logger.LogCritical("Nothing to do to handle node: " + request.NodeId);
+                        //if (_cfgServer.AliveSince > request.NodeAliveSince)
+                        //{
+                        //    // El nodo que esta haciendo el request fue creado antes, so, voy a verificar si el hash mio es igual que el de el.
+                        //    List<int> upgrade = TenantsToUpgrade(request.DataHash);
 
-                                HeartBeatSyncRequest(request.NodeId, response, false);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
-                            }
-                        }
-                        else
-                        if ((selfNode.LastLogId == request.LastLogId) && (selfNode.LastLogId > 0) && (selfNode.LastLogDate < request.LastLogDate)) 
-                        {
-                            try
-                            {
-                                List<int> upgrade = TenantsToUpgrade(request.DataHash);
-
-                                if (upgrade.Count > 0)
-                                {
-                                    selfNode.Status = SelfNodeStatus.Unsyncronized;
-                                    HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
-                                }                                
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
-                            }
-                        }
-                        else
-                        {
-                            //_logger.LogCritical("Nothing to do to handle node: " + request.NodeId);
-                            //if (_cfgServer.AliveSince > request.NodeAliveSince)
-                            //{
-                            //    // El nodo que esta haciendo el request fue creado antes, so, voy a verificar si el hash mio es igual que el de el.
-                            //    List<int> upgrade = TenantsToUpgrade(request.DataHash);
-
-                            //    if (upgrade.Count > 0)
-                            //    {
-                            //        selfNode.Status = SelfNodeStatus.Unsyncronized;
-                            //        HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
-                            //    }
-                            //}
-                        }
-                        // Now Request for syncronization
+                        //    if (upgrade.Count > 0)
+                        //    {
+                        //        selfNode.Status = SelfNodeStatus.Unsyncronized;
+                        //        HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
+                        //    }
+                        //}
                     }
                     return response;
                 }

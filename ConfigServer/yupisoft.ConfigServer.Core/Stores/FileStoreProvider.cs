@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using System.IO;
 using System.Collections;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace yupisoft.ConfigServer.Core.Stores
 {
@@ -24,9 +25,11 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         public string StartEntityName
         {
-            get
+            get { return _entityName; }
+            set
             {
-                return _entityName;
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                _entityName = rgx.Replace(value, "");
             }
         }
 

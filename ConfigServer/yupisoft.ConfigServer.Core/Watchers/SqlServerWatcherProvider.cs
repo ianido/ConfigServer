@@ -24,7 +24,7 @@ namespace yupisoft.ConfigServer.Core.Watchers
             get { return _entityName; }
             set
             {
-                Regex rgx = new Regex("[^a-zA-Z0-9]");
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
                 _entityName = rgx.Replace(value, "");
             }
         }
@@ -38,11 +38,11 @@ namespace yupisoft.ConfigServer.Core.Watchers
         public void RestartObservationDate()
         {
             SqlConnection conn = new SqlConnection(Connection);
-            SqlCommand cmd = new SqlCommand("select top 1 created from " + EntityName + " orderby created desc", conn);
+            SqlCommand cmd = new SqlCommand("select top 1 created from [" + EntityName + "] order by created desc", conn);
             try
             {
                 conn.Open();
-                var lastDate = (DateTime)cmd.ExecuteScalar();
+                var lastDate = (DateTime)(cmd.ExecuteScalar() ?? DateTime.MinValue);
                 LastWriteDate = lastDate;
             }
             finally
@@ -56,11 +56,11 @@ namespace yupisoft.ConfigServer.Core.Watchers
         {
             if (!EnableRaisingEvents) return;
             SqlConnection conn = new SqlConnection(Connection);
-            SqlCommand cmd = new SqlCommand("select top 1 created from " + EntityName + " orderby created desc", conn);
+            SqlCommand cmd = new SqlCommand("select top 1 created from [" + EntityName + "] order by created desc", conn);
             try
             {
                 conn.Open();
-                var lastDate = (DateTime)cmd.ExecuteScalar();
+                var lastDate = (DateTime)(cmd.ExecuteScalar() ?? DateTime.MinValue);
                 if (lastDate != LastWriteDate)
                 {
                     EnableRaisingEvents = false;

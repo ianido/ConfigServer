@@ -31,7 +31,7 @@ namespace yupisoft.ConfigServer.Core.Stores
             }
             set
             {
-                Regex rgx = new Regex("[^a-zA-Z0-9]");
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
                 _entityName = rgx.Replace(value, "");
             }
         }
@@ -59,8 +59,8 @@ namespace yupisoft.ConfigServer.Core.Stores
             SqlConnection conn = new SqlConnection(ConnectionString);
             SqlCommand cmdExist = new SqlCommand("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @entity", conn);
             cmdExist.Parameters.AddWithValue("@entity", entityName);
-            SqlCommand cmdCreate = new SqlCommand("CREATE TABLE " + entityName + " (id int IDENTITY(1,1) PRIMARY KEY, node NVARCHAR(MAX), created datetime)", conn);
-            SqlCommand cmd = new SqlCommand("insert into " + entityName + " (node, created) values (@node, @created) ", conn);
+            SqlCommand cmdCreate = new SqlCommand("CREATE TABLE [" + entityName + "] (id int IDENTITY(1,1) PRIMARY KEY, node NVARCHAR(MAX), created datetime)", conn);
+            SqlCommand cmd = new SqlCommand("insert into [" + entityName + "] (node, created) values (@node, @created) ", conn);
             cmd.Parameters.AddWithValue("@node", JsonConvert.SerializeObject(node));
             cmd.Parameters.AddWithValue("@created", DateTime.UtcNow);
             try
@@ -86,17 +86,18 @@ namespace yupisoft.ConfigServer.Core.Stores
             SqlConnection conn = new SqlConnection(ConnectionString);
             SqlCommand cmdExist = new SqlCommand("SELECT count(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @entity", conn);
             cmdExist.Parameters.AddWithValue("@entity", entityName);
-            SqlCommand cmd = new SqlCommand("select top 1 node, created from " + entityName + " orderby created desc", conn);
+            SqlCommand cmdCreate = new SqlCommand("CREATE TABLE [" + entityName + "] (id int IDENTITY(1,1) PRIMARY KEY, node NVARCHAR(MAX), created datetime)", conn);
+            SqlCommand cmd = new SqlCommand("select top 1 node, created from [" + entityName + "] order by created desc", conn);
             try
             {
-                string content = null;
+                string content = "{}";
                 DateTime updated = DateTime.MinValue;
+
                 conn.Open();
                 if ((int)cmdExist.ExecuteScalar() == 0)
-                    content = "{}";
+                    cmdCreate.ExecuteNonQuery();
                 else
                 {
-
                     var dr = cmd.ExecuteReader();
                     if (dr.Read())
                     {

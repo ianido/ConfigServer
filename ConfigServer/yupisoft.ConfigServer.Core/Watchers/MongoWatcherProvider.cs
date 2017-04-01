@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using MongoDB.Bson;
+using static yupisoft.ConfigServer.Core.Stores.MongoStoreProvider;
 
 namespace yupisoft.ConfigServer.Core.Watchers
 {
@@ -35,7 +36,7 @@ namespace yupisoft.ConfigServer.Core.Watchers
             get { return _entityName; }
             set
             {
-                Regex rgx = new Regex("[^a-zA-Z0-9]");
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
                 _entityName = rgx.Replace(value, "");
             }
         }
@@ -53,17 +54,17 @@ namespace yupisoft.ConfigServer.Core.Watchers
             var _db = _client.GetDatabase(_dbmongo);
             if (_db == null) throw new Exception("No Database named: " + _dbmongo);
 
-            var collection = _db.GetCollection<BsonDocument>(EntityName);
+            var collection = _db.GetCollection<DBRecord>(EntityName);
             if (collection == null) return;
 
-            var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
-            var LastWriteTimeUtc = v.First()["created"].ToUniversalTime();
+            var v = collection.Find("{}").SortByDescending(p=>p.Created).Limit(1);
+            var LastWriteTimeUtc = v.FirstOrDefault()?.Created;
 
             if (LastWriteTimeUtc != LastWriteDate)
             {
                 EnableRaisingEvents = false;
                 Changed(this, EntityName);
-                LastWriteDate = LastWriteTimeUtc;
+                LastWriteDate = LastWriteTimeUtc??DateTime.MinValue;
                 EnableRaisingEvents = true;
             }           
         }
@@ -74,12 +75,13 @@ namespace yupisoft.ConfigServer.Core.Watchers
             var _db = _client.GetDatabase(_dbmongo);
             if (_db == null) throw new Exception("No Database named: " + _dbmongo);
 
-            var collection = _db.GetCollection<BsonDocument>(EntityName);
+            var collection = _db.GetCollection<DBRecord>(EntityName);
             if (collection == null) return;
 
-            var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
-            var LastWriteTimeUtc = v.First()["created"].ToUniversalTime();
-            LastWriteDate = LastWriteTimeUtc;            
+            var v = collection.Find("{}").SortByDescending(p => p.Created).Limit(1);
+            var LastWriteTimeUtc = v.FirstOrDefault()?.Created;
+
+            LastWriteDate = LastWriteTimeUtc??DateTime.MinValue;            
         }
     }
 }

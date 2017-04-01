@@ -9,11 +9,20 @@ using MongoDB.Driver.Builders;
 using yupisoft.ConfigServer.Core.Json;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using MongoDB.Bson.Serialization;
+using System.Text.RegularExpressions;
 
 namespace yupisoft.ConfigServer.Core.Stores
 {
     public class MongoStoreProvider : IStoreProvider
     {
+        public class DBRecord
+        {
+            public ObjectId Id { get; set; }
+            public string Content { get; set; }
+            public DateTime Created { get; set; }
+        }
+
         private IConfigWatcher _watcher;
         private ILogger _logger;
 
@@ -23,15 +32,25 @@ namespace yupisoft.ConfigServer.Core.Stores
         {
             var _client = new MongoClient(MongoConnection);
             var _db = _client.GetDatabase(MongoDatabase);
-            if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
-            var collection = _db.GetCollection<BsonDocument>(entityName);
-            if (collection == null) return null;
-            var v = collection.Find("{}").Sort("{created:-1}").Limit(1);
-            var content = v.FirstOrDefault()?["node"]?.ToJson();
-            var created = v.FirstOrDefault()["created"].ToUniversalTime();
-            if (content == null) content = "{}";
-            _watcher.AddToWatcher(entityName, MongoDatabase, created);
-            return content;
+            var collection = _db.GetCollection<DBRecord>(entityName);
+            var v = collection.Find("{}").SortByDescending(r => r.Created).Limit(1);
+
+            DBRecord obj = null;
+
+            if (v.Count() > 0)
+            {
+                obj = v.FirstOrDefault<DBRecord>();
+            }
+            else
+            {
+                obj = new DBRecord();
+                obj.Id = ObjectId.GenerateNewId();
+                obj.Created = DateTime.UtcNow;
+                obj.Content = "{}";
+                collection.InsertOne(obj);
+            }
+            _watcher.AddToWatcher(entityName, MongoConnection + "|" + MongoDatabase, obj.Created);
+            return obj.Content;
         }
 
         public event StoreChanged Change;
@@ -44,9 +63,11 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         public string StartEntityName
         {
-            get
+            get { return _entityName; }
+            set
             {
-                return _entityName;
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                _entityName = rgx.Replace(value, "");
             }
         }
 
@@ -75,19 +96,12 @@ namespace yupisoft.ConfigServer.Core.Stores
         {
             var _client = new MongoClient(MongoConnection);
             var _db = _client.GetDatabase(MongoDatabase);
-            if (_db == null) throw new Exception("No Database named: " + MongoDatabase);
-            var collection = _db.GetCollection<BsonDocument>(entityName);
-            if (collection == null)
-            {
-                // Create Collection if not exist
-                _db.CreateCollection(entityName);
-                collection = _db.GetCollection<BsonDocument>(entityName);
-            }
-            JObject obj = new JObject();
-            obj["created"] = DateTime.UtcNow;
-            obj["node"] = node;
-            var toInsert = obj.ToBsonDocument();
-            collection.InsertOne(toInsert);
+            var collection = _db.GetCollection<DBRecord>(entityName);
+            DBRecord obj = new DBRecord();
+            obj.Id = ObjectId.GenerateNewId();
+            obj.Created = DateTime.UtcNow;
+            obj.Content = node.ToString(Formatting.Indented);
+            collection.InsertOne(obj);
         }
 
         public JToken Get(string entityName)

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace yupisoft.ConfigServer.Core.Watchers
@@ -15,12 +16,18 @@ namespace yupisoft.ConfigServer.Core.Watchers
         private string _entityName;
         private bool _enableRaisingEvents;
         private DateTime _lastWriteDate;
-        private string CheckSum;
 
         public string Connection { get { return _connection; } set { _connection = value; } }
 
-        public string EntityName { get { return _entityName; } set { _entityName = value; } }
-
+        public string EntityName
+        {
+            get { return _entityName; }
+            set
+            {
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                _entityName = rgx.Replace(value, "");
+            }
+        }
         public bool EnableRaisingEvents { get { return _enableRaisingEvents; } set { _enableRaisingEvents = value; } }
 
         public DateTime LastWriteDate { get { return _lastWriteDate; } set { _lastWriteDate = value; } }
@@ -36,16 +43,6 @@ namespace yupisoft.ConfigServer.Core.Watchers
                 Changed(this, fi.FullName);
                 LastWriteDate = fi.LastWriteTimeUtc;
                 EnableRaisingEvents = true;
-            }
-        }
-
-        private static string GetChecksum(string file)
-        {
-            using (FileStream stream = File.OpenRead(file))
-            {
-                var sha = new HMACSHA256();
-                byte[] checksum = sha.ComputeHash(stream);
-                return BitConverter.ToString(checksum).Replace("-", String.Empty);
             }
         }
 
