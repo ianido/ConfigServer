@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using yupisoft.ConfigServer.Core.Cluster;
 
 namespace yupisoft.ConfigServer.Core.Utils
 {
@@ -16,5 +18,23 @@ namespace yupisoft.ConfigServer.Core.Utils
             }
             return hashedValue;
         }
+        public static string SignMessage(SignedMessage message, string secret)
+        {
+            message.Signature = secret;
+            string serializedMessage = JsonConvert.SerializeObject(message, Formatting.None);
+            string csignature = CalculateHash(serializedMessage).ToString();
+            message.Signature = csignature;
+            return JsonConvert.SerializeObject(message, Formatting.None);
+        }
+
+        public static bool CheckMessageSignature(SignedMessage message, string secret)
+        {
+            string signature = message.Signature;
+            message.Signature = secret;
+            string serializedMessage = JsonConvert.SerializeObject(message, Formatting.None);
+            string csignature = CalculateHash(serializedMessage).ToString();
+            return (csignature == signature);
+        }
+
     }
 }

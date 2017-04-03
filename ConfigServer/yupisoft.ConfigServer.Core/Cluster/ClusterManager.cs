@@ -26,8 +26,10 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private int _NodesMonitoringHeartbeat = 2000; // Milliseconds
         private int _NodesMonitoringMaxAttempts = 3;
         private int _NodesMonitoringSkipAttemptsOnFail = 3;
+        private int _NodesMonitoringLife = 3;
+        private string _NodesMonitoringSecret = "123abc";
 
-        
+
         private List<Node> _nodes;    
         private SelfNode selfNode
         {
@@ -59,6 +61,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _NodesMonitoringHeartbeat = clusterConfig.Value.NodesMonitoringInterval;
             _NodesMonitoringMaxAttempts = clusterConfig.Value.NodesMonitoringMaxAttempts;
             _NodesMonitoringSkipAttemptsOnFail = clusterConfig.Value.NodesMonitoringSkipAttemptsOnFail;
+            _NodesMonitoringLife = clusterConfig.Value.NodesMonitoringLife;
+            _NodesMonitoringSecret = clusterConfig.Value.NodesMonitoringSecret;
 
             var nodesConfig = clusterConfig.Value.Nodes;
             foreach(var node in nodesConfig)
@@ -118,6 +122,15 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         public HeartBeatMessageResponse ProcessHeartBeat(HeartBeatMessageRequest request)
         {
+            bool validSignature = Utils.StringHandling.CheckMessageSignature(request, _NodesMonitoringSecret);
+            if (!validSignature)
+            {
+                HeartBeatMessageResponse response = new HeartBeatMessageResponse();
+                response.Created = DateTime.UtcNow;
+                response.NodeId = selfNode.Id;
+                response.Result = HeartBeartCommandResult.InvalidSignature;
+                return response;
+            }
             lock (selfNode)
             {
                 HeartBeatMessageResponse response = new HeartBeatMessageResponse();
@@ -131,7 +144,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 {
                     _logger.LogTrace("Node in Use; Ignoring HeartBeat: " + request.Command);
                     response.Command = HeartBeartCommand.InUse;
-                    response.LastLogId = selfNode.LastLogId;
                     return response;
                 }
 
@@ -268,7 +280,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     req.Log.Add(new LogMessage() { Created = DateTime.UtcNow, Entity = "default", TenantId = t, JsonDiff = null, LogId = 0 });
                 }
             }
-            string msgData = JsonConvert.SerializeObject(req);
+            string msgData = Utils.StringHandling.SignMessage(req, _NodesMonitoringSecret);
             HttpClient client = new HttpClient();
             Node requestNode = null;
             lock (_nodes) { requestNode = _nodes.FirstOrDefault(n => n.Id == NodeId); }
@@ -296,6 +308,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 if (rsMsg.Item == null)
                                 {
                                     _logger.LogError("Node: " + requestNode.Id + " do not return valid response. <null>");
+                                    return;
+                                }
+
+                                if (rsMsg.Item.Result!= HeartBeartCommandResult.Success)
+                                {
+                                    _logger.LogError("Node: " + requestNode.Id + " respond: " + rsMsg.Item.Result.ToString());
                                     return;
                                 }
 
@@ -417,8 +435,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     request.LastLogId = selfNode.LastLogId;
                     request.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
                     lock (_nodes) request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
-
-                    string msgData = JsonConvert.SerializeObject(request);
+                    string msgData = Utils.StringHandling.SignMessage(request, _NodesMonitoringSecret);
                     HttpClient client = new HttpClient();
                     _logger.LogTrace("HeartBeat --> " + node.Id + " Hash:" + request.DataHash[0].Value + " Log:" + selfNode.LastLogId);
                     node.InUse = true;
@@ -427,7 +444,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     {
                         lock (node)
                         {
-                            _logger.LogTrace("Received from: " + node.Id + " HeartBeat ST: " + a.Status);
                             try
                             {
                                 if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
@@ -438,10 +454,19 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                         _logger.LogError("Node: " + node.Id + " return Invalid response. attempt: " + node.Attempts);
                                         node.Attempts++;
                                     }
-                                    _logger.LogInformation("Heartbeat from " + node.Id + " successfully.");
-                                    node.Attempts = 0;
-                                    node.SkipAttempts = 0;
-                                    node.ResetLife();
+                                    else
+                                    if (rsMsg.Item.Result != HeartBeartCommandResult.Success)
+                                    {
+                                        _logger.LogError("Node: " + node.Id + " respond: " + rsMsg.Item.Result.ToString());
+                                        node.Attempts++;
+                                    }
+                                    else
+                                    {
+                                        _logger.LogInformation("Heartbeat from " + node.Id + " successfully.");
+                                        node.Attempts = 0;
+                                        node.SkipAttempts = 0;
+                                        node.ResetLife();
+                                    }
                                 }
                                 else
                                 {

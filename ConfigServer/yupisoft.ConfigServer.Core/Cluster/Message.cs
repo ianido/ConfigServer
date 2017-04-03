@@ -20,9 +20,15 @@ namespace yupisoft.ConfigServer.Core.Cluster
     {
         Success,
         Abort,
-        Error
+        Error,
+        InvalidSignature
     }
-    public class HeartBeatMessageRequest
+    public class SignedMessage
+    {
+        public string Signature { get; set; }
+    }
+
+    public class HeartBeatMessageRequest : SignedMessage
     {
         public string NodeId { get; set; }
         public DateTime NodeAliveSince { get; set; }
@@ -42,14 +48,14 @@ namespace yupisoft.ConfigServer.Core.Cluster
         }
     }
 
-    public class HeartBeatMessageResponse
+    public class HeartBeatMessageResponse : SignedMessage
     {
-        public string NodeId { get; set; }
-        public long LastLogId { get; set; }
-        public HeartBeartCommand Command { get; set; }
-        public DateTime NodeAliveSince { get; set; }
-        public List<LogMessage> Log { get; set; }
         public DateTime Created { get; set; }
+        public DateTime NodeAliveSince { get; set; }
+        public long LastLogId { get; set; }
+        public string NodeId { get; set; }
+        public HeartBeartCommand Command { get; set; }
+        public List<LogMessage> Log { get; set; }
         public HeartBeartCommandResult Result { get; set; }
     }
 }

@@ -21,6 +21,8 @@ namespace yupisoft.ConfigServer.Core
         public int NodesMonitoringInterval { get; set; }
         public int NodesMonitoringMaxAttempts { get; set; }
         public int NodesMonitoringSkipAttemptsOnFail { get; set; }
+        public int NodesMonitoringLife { get; set; }
+        public string NodesMonitoringSecret { get; set; }
         public List<NodeConfigSection> Nodes { get; set; }
         public ClusterConfigSection()
         {
