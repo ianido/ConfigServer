@@ -31,6 +31,7 @@ namespace yupisoft.ConfigServer.Core
         public string StartEntityName { get { return Store.StartEntityName; } }
         public JToken Token { get; set; }
         public Dictionary<string, JToken> RawTokens { get; set; }
+        public Dictionary<string, TService> Services { get; set; }
 
         public string DataHash {
             get

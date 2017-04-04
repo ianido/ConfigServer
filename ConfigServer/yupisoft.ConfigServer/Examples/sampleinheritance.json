@@ -18,6 +18,57 @@
     "baseobject": {
       "field0": "value0X",
       "fieldB": "valueB"
+    },
+    "services": {
+      "http80.$service": {
+        "id": "red0",
+        "name": "redis",
+        "tags": ["primary"],
+        "address": "127.0.0.1",
+        "port": 6000,
+        "checks": [
+          {
+            "id": "api",
+            "name": "HTTP API on port 5000",
+            "http": "http://localhost:5000/health",
+            "interval": "10s",
+            "timeout": "1s",
+            "tlsSkipVerify": "true",
+            "notes": "HTTP response code: any 2xx code is considered passing, a 429 Too Many Requests is a warning, and anything else is a failure."
+          },
+          {
+            "id": "mem-util",
+            "name": "Memory utilization",
+            "script": "/usr/local/bin/check_mem.py",
+            "interval": "10s",
+            "timeout": "1s",
+            "notes": "Exit code 0 - Check is passing, Exit code 1 - Check is warning, Any other code - Check is failing"
+          },
+          {
+            "id": "ssh",
+            "name": "SSH TCP on port 22",
+            "tcp": "localhost:22",
+            "interval": "10s",
+            "timeout": "1s",
+            "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
+          },
+          {
+            "id": "web-app",
+            "name": "Web App Status",
+            "notes": "Web app does a curl internally every 10 seconds",
+            "ttl": "30s"
+          },
+          {
+            "id": "mem-util",
+            "name": "Memory utilization",
+            "docker_container_id": "f972c95ebf0e",
+            "shell": "/bin/bash",
+            "script": "/usr/local/bin/check_mem.py",
+            "interval": "10s",
+            "notes": "ttl express the expiration of the status, after expires, status go to failed."
+          }
+        ]
+      }
     }
   }
 }
