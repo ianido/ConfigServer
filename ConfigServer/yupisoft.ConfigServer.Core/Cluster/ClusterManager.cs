@@ -389,24 +389,29 @@ namespace yupisoft.ConfigServer.Core.Cluster
             Node[] nodes = GetNodes();
             foreach (var node in nodesConfig)
             {
-                if (node.Enabled)
+
+                var foundNode = nodes.FirstOrDefault(e => e.Id == node.Id);
+                if (foundNode != null)
                 {
-                    var foundNode = nodes.FirstOrDefault(e => e.Id == node.Id);
-                    if (foundNode != null)
-                    {
+                    if (node.Enabled)
                         foundNode.Active = true;
-                    }
                     else
                     {
-                        var newNode = new Node() { Id = node.Id, Active = true, Address = node.Address, Self = false, NodeConfig = node };
-                        lock (_nodes)
-                        {
-                            _logger.LogInformation("Adding New Node Id: " + newNode.Id + ".");
-                            _nodes.Add(newNode);
-                            _cfgChanger.AddClusterNode(node);
-                        }
+                        foundNode.Active = false;
+                        _cfgChanger.DisableClusterNode(node.Id);
                     }
                 }
+                else
+                {
+                    var newNode = new Node() { Id = node.Id, Active = true, Address = node.Address, Self = false, NodeConfig = node };
+                    lock (_nodes)
+                    {
+                        _logger.LogInformation("Adding New Node Id: " + newNode.Id + ".");
+                        _nodes.Add(newNode);
+                        _cfgChanger.AddClusterNode(node);
+                    }
+                }
+
             }
         }
 

@@ -43,25 +43,6 @@ namespace yupisoft.ConfigServer.Controllers
             return result;
         }
 
-        [HttpPost]
-        [Route("api/[controller]/leave")]
-        public IActionResult Heartbeat([FromBody]HeartBeatMessageRequest msg)
-        {
 
-            ApiSingleResult<HeartBeatMessageResponse> result = new ApiSingleResult<HeartBeatMessageResponse>();
-            try
-            {
-                bool success = true;
-                if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
-                else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
-                result.Item = _clsManager.ProcessHeartBeat(msg);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogTrace("Error:" + ex.ToString());
-                result.messages.Add(new ApiResultMessage() { Message = ex.Message, MessageType = ApiResultMessage.MessageTypeValues.Error });
-            }
-            return result;
-        }
     }
 }
