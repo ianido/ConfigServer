@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace yupisoft.ConfigServer.Core
 {
-
+    /*
     public class ConfigMapper : IConfigMapper
     {
         public List<TNodeMap> _nodes { get; set; }
@@ -32,4 +32,5 @@ namespace yupisoft.ConfigServer.Core
             _nodes.Clear();
         }
     }
+    */
 }

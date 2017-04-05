@@ -26,12 +26,12 @@ namespace yupisoft.ConfigServer.Core
     }
     public class ConfigServerTenant
     {
-        public TenantConfigSection TenantConfig { get; set; }
+        public TenantConfigSection TenantConfig { get; private set; }
         public IStoreProvider Store { get; }
         public string StartEntityName { get { return Store.StartEntityName; } }
-        public JToken Token { get; set; }
-        public Dictionary<string, JToken> RawTokens { get; set; }
-        public Dictionary<string, TService> Services { get; set; }
+        public JToken Token { get; private set; }
+        public Dictionary<string, JToken> RawTokens { get; private set; }
+        public Dictionary<string, JServiceConfig> Services { get; private set; }
 
         public string DataHash {
             get
@@ -49,7 +49,9 @@ namespace yupisoft.ConfigServer.Core
         {
             _logger = logger;
             RawTokens = new Dictionary<string, JToken>();
+            Services = new Dictionary<string, JServiceConfig>();
             TenantConfig = tenantConfig;
+
             switch (tenantConfig.Store.Provider)
             {
                  
@@ -76,12 +78,26 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
+        private void DiscoverServices(JToken token)
+        {
+            JToken[] services = token.SelectTokens("$..[?(@.$service)]").ToArray();
+            Services.Clear();
+            foreach (var s in services)
+            {
+                JServiceConfig service = s.ToObject<JServiceConfig>();
+
+                Services.Add(service.Id, service);
+
+            }
+        }
+
         public LoadDataResult Load(bool startingUp)
         {
             List<EntityChanges> tchanges = new List<EntityChanges>();
             Store.Watcher.StopMonitoring();
             Store.Watcher.ClearWatcher();
             Token = Store.Get(StartEntityName);
+            DiscoverServices(Token);
             //RawTokens.Clear();
             var newRawTokens = new Dictionary<string, JToken>();
             foreach (var entity in Store.Watcher.GetEntities())

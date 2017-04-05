@@ -22,7 +22,7 @@ namespace yupisoft.ConfigServer.Controllers
         
         [HttpPost]
         [Route("api/{tenantId}/[controller]/set")]
-        public IActionResult Set(int tenantId, [FromBody]TNode node)
+        public IActionResult Set(int tenantId, [FromBody]JNode node)
         {
             ApiActionResult result = new ApiActionResult();
             try
@@ -88,7 +88,7 @@ namespace yupisoft.ConfigServer.Controllers
         public IActionResult Test()
         {
             _logger.LogTrace("Success");
-            ApiSingleResult<TNode> result = new ApiSingleResult<TNode>();
+            ApiSingleResult<JNode> result = new ApiSingleResult<JNode>();
             result.Item = null;
             return result;
         }       

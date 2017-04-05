@@ -3,6 +3,7 @@ using System.Dynamic;
 
 namespace yupisoft.ConfigServer.Core
 {
+    /*
     public class TEntity
     {
         private string _name;
@@ -16,5 +17,6 @@ namespace yupisoft.ConfigServer.Core
         public string Name => _name;
         public string Location => _location;
     }
+    */
 
 }

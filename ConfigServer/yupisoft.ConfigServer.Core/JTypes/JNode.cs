@@ -3,18 +3,18 @@ using System.Dynamic;
 
 namespace yupisoft.ConfigServer.Core
 {
-    public class TNode<T>
+    public class JNode<T>
     {
         private string _path;
         private T _value;
         private string _entity;
 
-        public TNode()
+        public JNode()
         {
 
         }
 
-        public TNode(string path, T value, string entityName)
+        public JNode(string path, T value, string entityName)
         {
             this._path = path;
             this._value = value;
@@ -25,9 +25,9 @@ namespace yupisoft.ConfigServer.Core
         public string Entity { get { return _entity; } set { _entity = value; } }
     }
 
-    public class TNode : TNode<JToken>
+    public class JNode : JNode<JToken>
     {
-        public TNode(string path, JToken value, string entityName) : base(path, value, entityName)
+        public JNode(string path, JToken value, string entityName) : base(path, value, entityName)
         {
         }
     }

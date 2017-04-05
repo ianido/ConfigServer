@@ -3,6 +3,7 @@ using System.Dynamic;
 
 namespace yupisoft.ConfigServer.Core
 {    
+    /*
     public class TNodeMap
     {
         private string _path;
@@ -28,5 +29,5 @@ namespace yupisoft.ConfigServer.Core
         public JToken Value => _value;
         
     }
-
+    */
 }

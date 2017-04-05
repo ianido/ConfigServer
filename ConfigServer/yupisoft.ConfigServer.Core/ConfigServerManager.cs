@@ -62,7 +62,7 @@ namespace yupisoft.ConfigServer.Core
             return null;
         }
 
-        public TNode GetRaw(string path, string entityName, int tenantId)
+        public JNode GetRaw(string path, string entityName, int tenantId)
         {
             var tenant = GetTenant(tenantId);
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
@@ -72,9 +72,9 @@ namespace yupisoft.ConfigServer.Core
             {
                 if (entityName == "@default") entityName = tenant.Store.StartEntityName;
                 JToken selToken = tenant.RawTokens[entityName].SelectToken(path);
-                if (selToken == null) return new TNode(path, "{}", entityName);
+                if (selToken == null) return new JNode(path, "{}", entityName);
                 var result = selToken.ToObject<JToken>();
-                return new TNode(path, result, entityName);
+                return new JNode(path, result, entityName);
             }
         }
 
@@ -98,12 +98,12 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
-        public bool Set(TNode newToken, int tenantId)
+        public bool Set(JNode newToken, int tenantId)
         {
             return Set(newToken, tenantId, false);
         }
 
-        internal bool Set(TNode newToken, int tenantId, bool stopMonitoring)
+        internal bool Set(JNode newToken, int tenantId, bool stopMonitoring)
         {
             var tenant = GetTenant(tenantId);
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");

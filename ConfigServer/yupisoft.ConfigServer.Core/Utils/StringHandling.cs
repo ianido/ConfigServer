@@ -26,7 +26,6 @@ namespace yupisoft.ConfigServer.Core.Utils
             message.Signature = csignature;
             return JsonConvert.SerializeObject(message, Formatting.None);
         }
-
         public static bool CheckMessageSignature(SignedMessage message, string secret)
         {
             string signature = message.Signature;

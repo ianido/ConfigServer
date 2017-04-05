@@ -344,7 +344,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                     {
                                         bool applied = false;
                                         if (log.Full)
-                                            applied = _cfgServer.Set(new TNode("", JToken.Parse(log.JsonDiff), log.Entity), log.TenantId, true);
+                                            applied = _cfgServer.Set(new JNode("", JToken.Parse(log.JsonDiff), log.Entity), log.TenantId, true);
                                          else 
                                             applied = _cfgServer.ApplyUpdate(log.TenantId, log.Entity, log.JsonDiff);
                                         if (applied) selfNode.LogMessages.Add(log);
@@ -356,7 +356,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 {
                                     foreach (var log in rsMsg.Item.Log)
                                     {
-                                        TNode node = new TNode("", JToken.Parse(log.JsonDiff), log.Entity);
+                                        JNode node = new JNode("", JToken.Parse(log.JsonDiff), log.Entity);
                                         bool applied = _cfgServer.Set(node, log.TenantId, true);
                                         if (applied) selfNode.LogMessages.Add(log);
                                     }

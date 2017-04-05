@@ -8,6 +8,8 @@ namespace yupisoft.ConfigServer.Core
 {
     public class ClassUtils
     {
+
+
         public static T GetField<T>(string fieldName, object obj)
         {
             FieldInfo dynField = obj.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
