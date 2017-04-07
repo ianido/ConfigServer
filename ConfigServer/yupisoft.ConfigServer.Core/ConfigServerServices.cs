@@ -20,13 +20,7 @@ namespace yupisoft.ConfigServer.Core
             _tenants = tenants;
             _timer = new Timer(new TimerCallback(Timer_Elapsed), tenants, Timeout.Infinite, 1000);
 
-            foreach (var tenant in _tenants.Tenants)
-            {
-                foreach (var service in tenant.Services)
-                {
-                    service.Value.AllChecksDone += Services_AllChecksDone;
-                }
-            }
+            
 
             _logger.LogInformation("Created ConfigServerServices with " + tenants.Tenants.Count + " tenants.");
         }
@@ -36,13 +30,21 @@ namespace yupisoft.ConfigServer.Core
             _logger.LogInformation("Service: " + service.Id + " check with status: " + status.ToString());
         }
 
-        private void DisableTimer()
+        public void StopMonitoring()
         {
             _timer.Change(Timeout.Infinite, 1000);
         }
 
-        private void EnableTimer()
+        public void StartMonitoring()
         {
+            foreach (var tenant in _tenants.Tenants)
+            {
+                foreach (var service in tenant.Services)
+                {
+                    service.Value.AllChecksDone -= Services_AllChecksDone;
+                    service.Value.AllChecksDone += Services_AllChecksDone;
+                }
+            }
             _timer.Change(1000, 1000);
         }
 
@@ -51,7 +53,7 @@ namespace yupisoft.ConfigServer.Core
             foreach(var tenant in _tenants.Tenants)
             {
                 foreach (var service in tenant.Services)
-                {
+                {   
                     int callid = service.Value.Check();
                 }
             }

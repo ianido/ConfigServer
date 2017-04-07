@@ -12,12 +12,15 @@ namespace yupisoft.ConfigServer.Core.Services
     {       
         private object _locking = new object();
 
-        public ScriptServiceCheck(JServiceCheckConfig checkConfig) : base(checkConfig)
+        public ScriptServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig) : base(checkConfig, serviceConfig)
         {
             _checkConfig = checkConfig;
+            _checkConfig.Script = _checkConfig.Script.Replace("$address", serviceConfig.Address);
+            _checkConfig.Script = _checkConfig.Script.Replace("$port", serviceConfig.Port.ToString());
+
         }
-        
-        public override void Check(int callid)
+
+        protected override void CheckAsync(int callid)
         {
             _lastCheckStatus = ServiceCheckStatus.Passing;
             OnCheckDone(Id, _lastCheckStatus, callid);

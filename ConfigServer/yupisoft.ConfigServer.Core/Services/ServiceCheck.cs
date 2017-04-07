@@ -11,6 +11,7 @@ namespace yupisoft.ConfigServer.Core.Services
     {
         protected JServiceCheckConfig _checkConfig;
         protected ServiceCheckStatus _lastCheckStatus;
+        protected DateTime _lastChecked = DateTime.UtcNow;
 
         protected virtual void OnCheckDone(string checkerId, ServiceCheckStatus status, int callid)
         {
@@ -36,19 +37,24 @@ namespace yupisoft.ConfigServer.Core.Services
             }
         }
 
-        protected ServiceCheck(JServiceCheckConfig checkConfig)
+        protected ServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig)
         {
             _checkConfig = checkConfig;
             _lastCheckStatus = ServiceCheckStatus.Nocheck;
+            _lastChecked = DateTime.UtcNow;
         }
-        public static ServiceCheck CreateFromConfig(JServiceCheckConfig checkConfig)
+        public static ServiceCheck CreateFromConfig(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig)
         {
-            if (checkConfig.CheckType == JServiceCheckType.Http) return new HttpServiceCheck(checkConfig);
-            if (checkConfig.CheckType == JServiceCheckType.Script) return new ScriptServiceCheck(checkConfig);
-            if (checkConfig.CheckType == JServiceCheckType.Tcp) return new TcpServiceCheck(checkConfig);
+            if (checkConfig.CheckType == JServiceCheckType.Http) return new HttpServiceCheck(checkConfig, serviceConfig);
+            if (checkConfig.CheckType == JServiceCheckType.Script) return new ScriptServiceCheck(checkConfig, serviceConfig);
+            if (checkConfig.CheckType == JServiceCheckType.Tcp) return new TcpServiceCheck(checkConfig, serviceConfig);
             throw new Exception("Cant create a check type.");
         }
         public ServiceCheckStatus LastCheckStatus { get { return _lastCheckStatus; } }
-        public abstract void Check(int callid);
+        public void Check(int callid)
+        {
+            if ((DateTime.UtcNow - _lastChecked) > Interval) { CheckAsync(callid); _lastChecked = DateTime.UtcNow; }
+        }
+        protected abstract void CheckAsync(int callid);
     }
 }

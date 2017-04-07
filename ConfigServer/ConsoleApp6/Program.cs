@@ -10,6 +10,11 @@ namespace ConsoleApp6
         {
             Console.WriteLine("Press Enter to start");
             Console.ReadLine();
+            TestAsync.RunMethod();
+            Console.WriteLine("Press Enter to exit");
+            Console.ReadLine();
+
+            /*
 
             string text = "";
             do
@@ -38,6 +43,7 @@ namespace ConsoleApp6
 
                 }
             } while (text != "X");
+            */
         }
     }
 }

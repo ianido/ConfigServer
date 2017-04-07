@@ -47,9 +47,8 @@ namespace yupisoft.ConfigServer.Core
         private ILogger _logger { get; set; }
         private ConfigServerServices _serviceManager { get; set; }
 
-        public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger, ConfigServerServices serviceManager)
+        public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger)
         {
-            _serviceManager = serviceManager;
             _logger = logger;
             RawTokens = new Dictionary<string, JToken>();
             Services = new Dictionary<string, Service>();
@@ -85,11 +84,11 @@ namespace yupisoft.ConfigServer.Core
         {
             lock (token)
             {
-                JToken[] services = token.SelectTokens("$..[?(@.$service)]").ToArray();
+                JToken[] services = token.SelectTokens("$..$service").ToArray();
                 Services.Clear();
                 foreach (var s in services)
                 {
-                    JServiceConfig service = s.ToObject<JServiceConfig>();
+                    JServiceConfig service = s.Parent.Parent.ToObject<JServiceConfig>();
                     Services.Add(service.Id, new Service(service));
                 }
             }
@@ -127,11 +126,11 @@ namespace yupisoft.ConfigServer.Core
     {
         public List<ConfigServerTenant> Tenants { get; set; }
 
-        public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger, ConfigServerServices serviceManager)
+        public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger)
         {
             Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t =>
             {
-                ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger, serviceManager);
+                ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger);
                 return tenant;
             }).ToList();
         }

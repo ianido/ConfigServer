@@ -13,14 +13,15 @@ namespace yupisoft.ConfigServer.Core.Services
         
         private object _locking = new object();
 
-        public TcpServiceCheck(JServiceCheckConfig checkConfig) : base(checkConfig)
+        public TcpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig) : base(checkConfig, serviceConfig)
         {
             _checkConfig = checkConfig;
+            _checkConfig.Tcp = _checkConfig.Tcp.Replace("$address", serviceConfig.Address);
+            _checkConfig.Tcp = _checkConfig.Tcp.Replace("$port", serviceConfig.Port.ToString());
         }
 
 
-
-        public override void Check(int callid)
+        protected override void CheckAsync(int callid)
         {
             TcpClient client = new TcpClient();
             var addr = _checkConfig.Tcp.Split(':');
@@ -29,7 +30,7 @@ namespace yupisoft.ConfigServer.Core.Services
             {
                 lock (_locking)
                 {
-                    if ((a.IsCompleted) && (client.Connected))
+                    if ((a.Status == TaskStatus.RanToCompletion) && (a.IsCompleted) && (client.Connected))
                         _lastCheckStatus = ServiceCheckStatus.Passing;                       
                     else
                         _lastCheckStatus = ServiceCheckStatus.Failing;

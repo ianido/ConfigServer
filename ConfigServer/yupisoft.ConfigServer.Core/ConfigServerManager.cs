@@ -16,15 +16,19 @@ namespace yupisoft.ConfigServer.Core
 
         private ILogger _logger;
 
-        public ConfigServerTenants TenantManager { get; set; }
+        public ConfigServerTenants TenantManager { get; private set; }
+
+        public ConfigServerServices ServiceManager { get; private set; }
 
         public DateTime AliveSince { get; private set; }
 
         public event DataChangedEventHandler DataChanged;
 
-        public ConfigServerManager(ConfigServerTenants tenants, ILogger<ConfigServerManager> logger)
+        public ConfigServerManager(ConfigServerTenants tenants, ConfigServerServices serviceManager, ILogger<ConfigServerManager> logger)
         {
             TenantManager = tenants;
+            ServiceManager = serviceManager;
+
             _logger = logger;
             AliveSince = DateTime.UtcNow;
 
@@ -33,11 +37,13 @@ namespace yupisoft.ConfigServer.Core
                 tenant.Store.Change += Store_Change;
                 tenant.Load(true);
             }
-            _logger.LogTrace("Created ConfigManager with " + TenantManager.Tenants.Count + " tenants.");            
+            _logger.LogTrace("Created ConfigManager with " + TenantManager.Tenants.Count + " tenants.");
+            serviceManager.StartMonitoring();
         }
 
         private void Store_Change(IStoreProvider sender, string entityName)
         {
+            ServiceManager.StopMonitoring();
             foreach (var tenant in TenantManager.Tenants)
             {
                 if (tenant.Store.StartEntityName == sender.StartEntityName)
@@ -48,8 +54,7 @@ namespace yupisoft.ConfigServer.Core
                             DataChanged?.Invoke(tenant.TenantConfig.Id, e.entity, e.diffToken);
                 }
             }
-
-            
+            ServiceManager.StartMonitoring();            
         }
 
         private ConfigServerTenant GetTenant(int tenantId)

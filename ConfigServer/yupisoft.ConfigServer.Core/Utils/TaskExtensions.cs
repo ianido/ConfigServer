@@ -42,8 +42,9 @@ namespace yupisoft.ConfigServer.Core
 
         public static Task WithTimeout(this Task task, TimeSpan timeout)
         {
-            var timeoutTask = Task.Delay(timeout).ContinueWith(_ => TaskContinuationOptions.ExecuteSynchronously);
-            return Task.WhenAny(task, timeoutTask).Unwrap();
+            var timeoutTask = Task.Delay(timeout).ContinueWith((t) => { throw new TimeoutException(); }, TaskContinuationOptions.ExecuteSynchronously);
+            var taskResult = Task.WhenAny(task, timeoutTask).Unwrap();
+            return taskResult;
         }
     }
 }

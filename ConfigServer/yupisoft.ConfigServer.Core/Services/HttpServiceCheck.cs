@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using yupisoft.ConfigServer.Core.Utils;
 
 namespace yupisoft.ConfigServer.Core.Services
@@ -11,12 +12,14 @@ namespace yupisoft.ConfigServer.Core.Services
 
         private object _locking = new object();
 
-        public HttpServiceCheck(JServiceCheckConfig checkConfig) : base(checkConfig)
+        public HttpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig) : base(checkConfig, serviceConfig)
         {
             _checkConfig = checkConfig;
+            _checkConfig.Http = _checkConfig.Http.Replace("$address", serviceConfig.Address);
+            _checkConfig.Http = _checkConfig.Http.Replace("$port", serviceConfig.Port.ToString());
         }
 
-        public override void Check(int callid)
+        protected override void CheckAsync(int callid)
         {
             HttpClient client = new HttpClient();
             client.Timeout = Timeout;
@@ -24,7 +27,7 @@ namespace yupisoft.ConfigServer.Core.Services
             {
                 lock (_locking)
                 {
-                    if (a.Result.IsSuccessStatusCode)
+                    if ((a.Status == TaskStatus.RanToCompletion) && (a.IsCompleted) && (a.Result.IsSuccessStatusCode))
                         _lastCheckStatus = ServiceCheckStatus.Passing;
                     else
                         _lastCheckStatus = ServiceCheckStatus.Failing;
