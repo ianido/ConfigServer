@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 using yupisoft.ConfigServer.Core.Cluster;
 using yupisoft.ConfigServer.Core.Utils;
+using yupisoft.ConfigServer.Core.Services;
 
 namespace yupisoft.ConfigServer.Core
 {
@@ -31,7 +32,7 @@ namespace yupisoft.ConfigServer.Core
         public string StartEntityName { get { return Store.StartEntityName; } }
         public JToken Token { get; private set; }
         public Dictionary<string, JToken> RawTokens { get; private set; }
-        public Dictionary<string, JServiceConfig> Services { get; private set; }
+        public Dictionary<string, Service> Services { get; private set; }
 
         public string DataHash {
             get
@@ -44,12 +45,14 @@ namespace yupisoft.ConfigServer.Core
             }
         }
         private ILogger _logger { get; set; }
+        private ConfigServerServices _serviceManager { get; set; }
 
-        public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger)
+        public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger, ConfigServerServices serviceManager)
         {
+            _serviceManager = serviceManager;
             _logger = logger;
             RawTokens = new Dictionary<string, JToken>();
-            Services = new Dictionary<string, JServiceConfig>();
+            Services = new Dictionary<string, Service>();
             TenantConfig = tenantConfig;
 
             switch (tenantConfig.Store.Provider)
@@ -80,14 +83,15 @@ namespace yupisoft.ConfigServer.Core
 
         private void DiscoverServices(JToken token)
         {
-            JToken[] services = token.SelectTokens("$..[?(@.$service)]").ToArray();
-            Services.Clear();
-            foreach (var s in services)
+            lock (token)
             {
-                JServiceConfig service = s.ToObject<JServiceConfig>();
-
-                Services.Add(service.Id, service);
-
+                JToken[] services = token.SelectTokens("$..[?(@.$service)]").ToArray();
+                Services.Clear();
+                foreach (var s in services)
+                {
+                    JServiceConfig service = s.ToObject<JServiceConfig>();
+                    Services.Add(service.Id, new Service(service));
+                }
             }
         }
 
@@ -123,11 +127,11 @@ namespace yupisoft.ConfigServer.Core
     {
         public List<ConfigServerTenant> Tenants { get; set; }
 
-        public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger)
+        public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger, ConfigServerServices serviceManager)
         {
             Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t =>
             {
-                ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger);
+                ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger, serviceManager);
                 return tenant;
             }).ToList();
         }

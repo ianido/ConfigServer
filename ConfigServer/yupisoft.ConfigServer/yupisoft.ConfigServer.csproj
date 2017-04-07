@@ -6,7 +6,7 @@
     <AssemblyName>yupisoft.ConfigServer</AssemblyName>
     <OutputType>Exe</OutputType>
     <PackageId>yupisoft.ConfigServer</PackageId>
-	<GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
+	  <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
@@ -52,6 +52,13 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <Compile Update="MainService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+  </ItemGroup>
+
   <ItemGroup>
     <Content Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -60,5 +67,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
 
 </Project>

@@ -4,8 +4,6 @@
     <TargetFrameworks>netstandard1.6;net462</TargetFrameworks>
     <AssemblyName>yupisoft.ConfigServer.Client</AssemblyName>
     <PackageId>yupisoft.ConfigServer.Client</PackageId>
-    <NetStandardImplicitPackageVersion>1.6.1</NetStandardImplicitPackageVersion>
-    <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netstandard1.6' ">$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>

@@ -4,8 +4,6 @@
     <TargetFrameworks>netstandard1.6;net462</TargetFrameworks>
     <AssemblyName>yupisoft.ConfigServer.Core</AssemblyName>
     <PackageId>yupisoft.ConfigServer.Core</PackageId>
-    <NetStandardImplicitPackageVersion>1.6.1</NetStandardImplicitPackageVersion>
-    <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netstandard1.6' ">$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
@@ -14,24 +12,22 @@
   <ItemGroup>
     <PackageReference Include="JsonDiffPathDotNetCore" Version="1.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="1.1.2" />
-    <PackageReference Include="System.Data.Common" Version="4.1.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.1.0" />
-    <PackageReference Include="mongocsharpdriver" Version="*" />
-    <PackageReference Include="System.IO.FileSystem.Watcher" Version="4.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="1.0.2" />
+    <PackageReference Include="System.Data.Common" Version="4.3.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.3.0" />
+    <PackageReference Include="mongocsharpdriver" Version="2.4.3" />
+    <PackageReference Include="System.IO.FileSystem.Watcher" Version="4.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="1.1.1" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">
-    <Reference Include="System" />
-    <Reference Include="Microsoft.CSharp" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.6'">
-    <PackageReference Include="ARSoft.Tools.Net.NetCore">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
+    <PackageReference Include="ARSoft.Tools.Net.Custom">
       <Version>1.0.0</Version>
     </PackageReference>
   </ItemGroup>
 
-
-
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard1.6'">
+    <PackageReference Include="ARSoft.Tools.NetCore.Custom">
+      <Version>1.0.0</Version>
+    </PackageReference>
+  </ItemGroup>
 </Project>

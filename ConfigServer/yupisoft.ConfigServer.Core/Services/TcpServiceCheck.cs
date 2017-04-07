@@ -10,9 +10,8 @@ namespace yupisoft.ConfigServer.Core.Services
 {
     public class TcpServiceCheck : ServiceCheck
     {
-        private JServiceCheckConfig _checkConfig;
         
-        private object _locking;
+        private object _locking = new object();
 
         public TcpServiceCheck(JServiceCheckConfig checkConfig) : base(checkConfig)
         {
@@ -21,7 +20,7 @@ namespace yupisoft.ConfigServer.Core.Services
 
 
 
-        public override void Check()
+        public override void Check(int callid)
         {
             TcpClient client = new TcpClient();
             var addr = _checkConfig.Tcp.Split(':');
@@ -35,8 +34,9 @@ namespace yupisoft.ConfigServer.Core.Services
                     else
                         _lastCheckStatus = ServiceCheckStatus.Failing;
                     client?.Dispose();
+                    OnCheckDone(Id, _lastCheckStatus, callid);
                 }
-            }).WithTimeout(_checkConfig.TimeoutSpan);
+            }).WithTimeout(Timeout);
         }
     }
 }
