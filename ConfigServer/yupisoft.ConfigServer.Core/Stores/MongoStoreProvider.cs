@@ -27,6 +27,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         private ILogger _logger;
 
         private string _entityName;
+        private string _aclName;
 
         private string GetContent(string entityName)
         {
@@ -70,18 +71,28 @@ namespace yupisoft.ConfigServer.Core.Stores
                 _entityName = rgx.Replace(value, "");
             }
         }
+        public string ACLEntityName
+        {
+            get { return _aclName; }
+            set
+            {
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                _aclName = rgx.Replace(value, "");
+            }
+        }
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="connectionString">the connection String to the mongo DB Server|database: "mongodb://localhost:27017|EmployeeDB"</param>
-        public MongoStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
+        public MongoStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger)
         {
-            string[] connectionStringParts = connectionString.Split('|');
+            string[] connectionStringParts = config.Connection.Split('|');
             if (connectionStringParts.Length < 2) throw new Exception("Incorrect Connection String");
             MongoConnection = connectionStringParts[0];
             MongoDatabase = connectionStringParts[1];
-            _entityName = startEntityName;
+            StartEntityName = config.StartEntityName;
+            ACLEntityName = config.ACLEntityName;
             _watcher = watcher;
             _watcher.Change += _watcher_Change;
             _logger = logger;

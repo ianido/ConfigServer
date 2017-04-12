@@ -20,7 +20,7 @@ namespace ConsoleApp4
             {
                 Console.WriteLine("Creating client...");
                 //ConfigService cfg = new ConfigService("http://localhost:27764", "",1);
-                ConfigService cfg = new ConfigService("http://localhost:8000", "", 1);
+                ConfigService cfg = new ConfigService("http://localhost:8000", "", "1", "", "");
                 Console.WriteLine("Requesting Path: Configuration");
                 dynamic obj = cfg.Get<dynamic>("configuration");
                 string content = JsonConvert.SerializeObject(obj, Formatting.Indented);

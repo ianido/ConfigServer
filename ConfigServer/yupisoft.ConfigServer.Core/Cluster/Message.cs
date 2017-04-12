@@ -12,7 +12,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         SyncResponse,
         FullSyncRequest,
         FullSyncResponse,
-        InUse,
+        Abort,
         Unknow
     }
 
@@ -20,19 +20,16 @@ namespace yupisoft.ConfigServer.Core.Cluster
     {
         Success,
         Abort,
+        InUse,
         Error,
         InvalidSignature
     }
-    public class SignedMessage
-    {
-        public string Signature { get; set; }
-    }
 
-    public class HeartBeatMessageRequest : SignedMessage
+    public class HeartBeatMessageRequest 
     {
         public string NodeId { get; set; }
         public DateTime NodeAliveSince { get; set; }
-        public KeyValuePair<int, string>[] DataHash { get; set; }
+        public KeyValuePair<string, string>[] DataHash { get; set; }
         public HeartBeartCommand Command { get; set; }
         public long LastLogId { get; set; }
         public DateTime LastLogDate { get; set; }
@@ -48,7 +45,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         }
     }
 
-    public class HeartBeatMessageResponse : SignedMessage
+    public class HeartBeatMessageResponse 
     {
         public DateTime Created { get; set; }
         public DateTime NodeAliveSince { get; set; }

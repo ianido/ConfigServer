@@ -18,6 +18,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         private ILogger _logger;
         private string FILEDATEFORMAT = "yyyy-MM-dd-hh-mm-ss";
         private string _entityName;
+        private string _aclName;
 
         public event StoreChanged Change;
 
@@ -32,13 +33,23 @@ namespace yupisoft.ConfigServer.Core.Stores
                 _entityName = rgx.Replace(value, "");
             }
         }
+        public string ACLEntityName
+        {
+            get { return _aclName; }
+            set
+            {
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                _aclName = rgx.Replace(value, "");
+            }
+        }
 
         public IConfigWatcher Watcher { get{ return _watcher; } }
 
-        public FileStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
+        public FileStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger)
         {
-            FilePath = connectionString;
-            _entityName = startEntityName.Replace("/","\\");
+            FilePath = config.Connection;
+            _entityName = config.StartEntityName.Replace("/","\\");
+            _aclName = config.ACLEntityName.Replace("/", "\\");
             _logger = logger;
             _watcher = watcher;
             _watcher.Change += _watcher_Change;
@@ -66,7 +77,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         {
             entityName = entityName.Replace("/", "\\");
             string content = GetContent(entityName);
-
+            _logger.LogTrace("Retrieved: " + entityName);
             JToken token = JsonProcessor.Process(content, entityName, this);            
             return token;
         }
@@ -75,6 +86,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         {
             entityName = entityName.Replace("/", "\\");
             string content = GetContent(entityName);
+            _logger.LogTrace("Retrieved Raw: " + entityName);
             return JsonConvert.DeserializeObject<JToken>(content);
         }
 

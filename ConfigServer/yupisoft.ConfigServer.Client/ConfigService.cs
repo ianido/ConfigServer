@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-
+using System.Threading;
 
 namespace yupisoft.ConfigServer.Client
 {
@@ -14,7 +14,9 @@ namespace yupisoft.ConfigServer.Client
         private static HttpClient _client = null;
         private string _serveraddr = "";
         private string _rootnode = "";
-        private int _tenantId;
+        private string _appId = "";
+        private string _apiKey = "";
+        private string _tenantId;
         private HttpClient client
         {
             get
@@ -25,24 +27,23 @@ namespace yupisoft.ConfigServer.Client
         }
 
         #region Constructors
-
+#if NET452
         public ConfigService()
         {
-#if NET452
             _serveraddr = ClientConfigSection.GetSettings().Server;
             _rootnode = ClientConfigSection.GetSettings().BaseNode;
+            _tenantId = ClientConfigSection.GetSettings().TenantId;
+            _appId = ClientConfigSection.GetSettings().APPId;
+            _apiKey = ClientConfigSection.GetSettings().APIKey;
             if (!_serveraddr.EndsWith("/")) _serveraddr += "/";
+        }
 #endif
-        }
 
-        public ConfigService(string serveraddr)
-        {
-            _serveraddr = serveraddr;
-            if (!_serveraddr.EndsWith("/")) _serveraddr += "/";
-        }
 
-        public ConfigService(string serveraddr, string rootnode, int tenantId)
+        public ConfigService(string serveraddr, string rootnode, string tenantId, string AppId, string APIKey)
         {
+            _appId = AppId;
+            _apiKey = APIKey;
             _tenantId = tenantId;
             _serveraddr = serveraddr;
             _rootnode = rootnode;
@@ -58,7 +59,7 @@ namespace yupisoft.ConfigServer.Client
             var message = new HttpRequestMessage(); 
             message.Method = HttpMethod.Get;
             message.RequestUri = new Uri(_serveraddr + "api/"+_tenantId+"/config/get/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
-            var response = client.SendAsync(message).Result;
+            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey).Result;
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }
@@ -69,7 +70,7 @@ namespace yupisoft.ConfigServer.Client
             var message = new HttpRequestMessage();
             message.Method = HttpMethod.Get;
             message.RequestUri = new Uri(_serveraddr + "api/" + _tenantId + "/config/node/" + entity + "/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
-            var response = client.SendAsync(message).Result;
+            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey).Result;
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }
@@ -83,7 +84,7 @@ namespace yupisoft.ConfigServer.Client
             message.Method = HttpMethod.Post;
             message.Content = content;
             message.RequestUri = new Uri(_serveraddr + "api/" + _tenantId + "/config/set");
-            var response = client.SendAsync(message).Result;
+            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey).Result;
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }

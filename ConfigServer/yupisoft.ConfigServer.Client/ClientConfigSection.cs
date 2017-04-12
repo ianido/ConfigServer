@@ -10,7 +10,7 @@ using System.Text;
 
 namespace yupisoft.ConfigServer.Client
 {
-    #if NET462
+#if NET462
     public class ClientConfigSection : ConfigurationSection
     {
         public static ClientConfigSection GetSettings()
@@ -42,7 +42,43 @@ namespace yupisoft.ConfigServer.Client
             {
                 this["BaseNode"] = value;
             }
-        }            
+        }  
+        [ConfigurationProperty("TenantId", DefaultValue = "", IsRequired = false)]
+        public string TenantId
+        {
+            get
+            {
+                return (string)this["TenantId"];
+            }
+            set
+            {
+                this["TenantId"] = value;
+            }
+        }  
+        [ConfigurationProperty("APPId", DefaultValue = "", IsRequired = false)]
+        public string APPId
+        {
+            get
+            {
+                return (string)this["APPId"];
+            }
+            set
+            {
+                this["APPId"] = value;
+            }
+        }  
+        [ConfigurationProperty("APIKey", DefaultValue = "", IsRequired = false)]
+        public string APIKey
+        {
+            get
+            {
+                return (string)this["APIKey"];
+            }
+            set
+            {
+                this["APIKey"] = value;
+            }
+        }  
     }
 #endif
 }

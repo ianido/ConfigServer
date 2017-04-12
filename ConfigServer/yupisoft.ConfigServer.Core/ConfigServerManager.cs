@@ -8,7 +8,7 @@ using yupisoft.ConfigServer.Core.Cluster;
 
 namespace yupisoft.ConfigServer.Core
 {
-    public delegate void DataChangedEventHandler(int tenantId, string entity, JToken jsonDiff);
+    public delegate void DataChangedEventHandler(string tenantId, string entity, JToken jsonDiff);
 
     public class ConfigServerManager
     {
@@ -35,7 +35,7 @@ namespace yupisoft.ConfigServer.Core
             foreach (var tenant in TenantManager.Tenants)
             {
                 tenant.Store.Change += Store_Change;
-                tenant.Load(true);
+                tenant.Load(true, null);
             }
             _logger.LogTrace("Created ConfigManager with " + TenantManager.Tenants.Count + " tenants.");
             serviceManager.StartMonitoring();
@@ -48,7 +48,7 @@ namespace yupisoft.ConfigServer.Core
             {
                 if (tenant.Store.StartEntityName == sender.StartEntityName)
                 {
-                    var loadResult = tenant.Load(false);
+                    var loadResult = tenant.Load(false, sender.StartEntityName);
                     if (loadResult.Changes.Length > 0)
                         foreach (var e in loadResult.Changes)
                             DataChanged?.Invoke(tenant.TenantConfig.Id, e.entity, e.diffToken);
@@ -57,7 +57,7 @@ namespace yupisoft.ConfigServer.Core
             ServiceManager.StartMonitoring();            
         }
 
-        private ConfigServerTenant GetTenant(int tenantId)
+        private ConfigServerTenant GetTenant(string tenantId)
         {
             foreach (var tenant in TenantManager.Tenants)
             {
@@ -67,7 +67,7 @@ namespace yupisoft.ConfigServer.Core
             return null;
         }
 
-        public JNode GetRaw(string path, string entityName, int tenantId)
+        public JNode GetRaw(string path, string entityName, string tenantId)
         {
             var tenant = GetTenant(tenantId);
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
@@ -83,12 +83,12 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
-        public JToken Get(string path, int tenantId)
+        public JToken Get(string path, string tenantId)
         {
             return Get<JToken>(path, tenantId);
         }
 
-        public T Get<T>(string path, int tenantId)
+        public T Get<T>(string path, string tenantId)
         {
             var tenant = GetTenant(tenantId);
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
@@ -103,12 +103,12 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
-        public bool Set(JNode newToken, int tenantId)
+        public bool Set(JNode newToken, string tenantId)
         {
             return Set(newToken, tenantId, false);
         }
 
-        internal bool Set(JNode newToken, int tenantId, bool stopMonitoring)
+        internal bool Set(JNode newToken, string tenantId, bool stopMonitoring)
         {
             var tenant = GetTenant(tenantId);
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
@@ -129,7 +129,7 @@ namespace yupisoft.ConfigServer.Core
                     tenant.Store.Set(rawToken, newToken.Entity);
                     if (stopMonitoring)
                     {
-                        var res = tenant.Load(false);
+                        var res = tenant.Load(false, newToken.Entity);
                         if (res.Changes.Length > 0)
                         {
                             _logger.LogTrace("Applied Update: ");
@@ -144,7 +144,7 @@ namespace yupisoft.ConfigServer.Core
             return true;
         }
 
-        public bool ApplyUpdate(int tenantId, string entity, string jsonDiff)
+        public bool ApplyUpdate(string tenantId, string entity, string jsonDiff)
         {
             if (string.IsNullOrEmpty(jsonDiff)) return true;
             var tenant = GetTenant(tenantId);
@@ -161,7 +161,7 @@ namespace yupisoft.ConfigServer.Core
                     JToken result = mJsonDiff.Patch(rawToken, patchToken);
                     tenant.Store.Watcher.StopMonitoring();
                     tenant.Store.Set(result, entity);
-                    var res = tenant.Load(false);
+                    var res = tenant.Load(false, entity);
                     if (res.Changes.Length > 0)
                     {
                         _logger.LogTrace("Applied Update: ");

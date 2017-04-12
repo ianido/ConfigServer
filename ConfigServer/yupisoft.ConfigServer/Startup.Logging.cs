@@ -29,7 +29,7 @@
             IConfiguration configuration)
         {
             //loggerFactory.AddConsole(configuration.GetSection("Logging"));
-            //loggerFactory.AddDebug();
+            loggerFactory.AddDebug();
 
             loggerFactory.AddNLog();
             app.AddNLogWeb();

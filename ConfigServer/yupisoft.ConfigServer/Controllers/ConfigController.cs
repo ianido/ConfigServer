@@ -4,11 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Cors;
 using yupisoft.ConfigServer.Core;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.Hmac;
 
 namespace yupisoft.ConfigServer.Controllers
 {
     
     [EnableCors("AllowAll")]
+    [Authorize(Policy = "Customer")]
     public class ConfigController : Controller
     {
         private ILogger _logger { get; set; }
@@ -22,7 +25,7 @@ namespace yupisoft.ConfigServer.Controllers
         
         [HttpPost]
         [Route("api/{tenantId}/[controller]/set")]
-        public IActionResult Set(int tenantId, [FromBody]JNode node)
+        public IActionResult Set(string tenantId, [FromBody]JNode node)
         {
             ApiActionResult result = new ApiActionResult();
             try
@@ -42,7 +45,7 @@ namespace yupisoft.ConfigServer.Controllers
 
         [HttpGet]
         [Route("api/{tenantId}/[controller]/get/{path}")]
-        public IActionResult Get(int tenantId, string path)
+        public IActionResult Get(string tenantId, string path)
         {
             ApiSingleResult<object> result = new ApiSingleResult<object>();
             try
@@ -64,7 +67,7 @@ namespace yupisoft.ConfigServer.Controllers
 
         [HttpGet]
         [Route("api/{tenantId}/[controller]/node/{entity}/{path}")]
-        public IActionResult GetRaw(int tenantId, string entity, string path)
+        public IActionResult GetRaw(string tenantId, string entity, string path)
         {
             ApiSingleResult<object> result = new ApiSingleResult<object>();
             try
@@ -84,6 +87,7 @@ namespace yupisoft.ConfigServer.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         [Route("api/[controller]/test")]
         public IActionResult Test()
         {

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,19 +15,27 @@ namespace yupisoft.ConfigServer.Core
         public string Address { get; set; }
     }
 
+    public class ClusterConfigMonitoringSection
+    {
+        public string Mode { get; set; }
+        public int Interval { get; set; }
+        public int MaxAttempts { get; set; }
+        public int SkipAttemptsOnFail { get; set; }
+        public int NodesLife { get; set; }
+    }
+
     public class ClusterConfigSection
     {
         public string OwnNodeName { get; set; }
         public string OwnNodeUrl { get; set; }
-        public int NodesMonitoringInterval { get; set; }
-        public int NodesMonitoringMaxAttempts { get; set; }
-        public int NodesMonitoringSkipAttemptsOnFail { get; set; }
-        public int NodesMonitoringLife { get; set; }
-        public string NodesMonitoringSecret { get; set; }
+        public HmacAuthenticationOptions Security { get; set; }
+        public ClusterConfigMonitoringSection Monitoring { get; set; }
         public List<NodeConfigSection> Nodes { get; set; }
         public ClusterConfigSection()
         {
             Nodes = new List<NodeConfigSection>();
+            Monitoring = new ClusterConfigMonitoringSection();
+            Security = new HmacAuthenticationOptions();
         } 
 
 

@@ -1,0 +1,14 @@
+﻿{
+    "apps": [
+      {
+        "appid": "a1",
+        "secret": "abcdefghijklmnopq123"
+      },
+      {
+        "appid": "a2",
+        "secret": "abcdefghijklmnopq123",
+        "roles": "admin,user"
+      }
+    ]
+}
+		

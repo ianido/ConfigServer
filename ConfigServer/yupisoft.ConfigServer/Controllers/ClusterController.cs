@@ -5,11 +5,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Cors;
 using yupisoft.ConfigServer.Core;
 using yupisoft.ConfigServer.Core.Cluster;
+using Microsoft.AspNetCore.Authentication.Hmac;
+using Microsoft.AspNetCore.Authorization;
 
 namespace yupisoft.ConfigServer.Controllers
 {
     
     [EnableCors("AllowAll")]
+    [Authorize(Policy = "Cluster")]
     public class ClusterController : Controller
     {
         private ILogger _logger { get; set; }
@@ -23,7 +26,7 @@ namespace yupisoft.ConfigServer.Controllers
         }
         
         [HttpPost]
-        [Route("api/[controller]/heartbeat")]
+        [Route("api/[controller]/heartbeat")]        
         public IActionResult Heartbeat([FromBody]HeartBeatMessageRequest msg)
         {
             

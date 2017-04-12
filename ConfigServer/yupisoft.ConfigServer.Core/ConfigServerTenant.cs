@@ -30,7 +30,9 @@ namespace yupisoft.ConfigServer.Core
         public TenantConfigSection TenantConfig { get; private set; }
         public IStoreProvider Store { get; }
         public string StartEntityName { get { return Store.StartEntityName; } }
+        public string ACLEntityName { get { return Store.ACLEntityName; } }
         public JToken Token { get; private set; }
+        public JToken ACLToken { get; private set; }
         public Dictionary<string, JToken> RawTokens { get; private set; }
         public Dictionary<string, Service> Services { get; private set; }
 
@@ -61,20 +63,17 @@ namespace yupisoft.ConfigServer.Core
                     {
                         if (tenantConfig.Store.Connection.Contains("$ContentRoot") && env != null)
                             tenantConfig.Store.Connection = tenantConfig.Store.Connection.Replace("$ContentRoot", env.ContentRootPath);
-                        Store = new FileStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ConfigWatcher<FileWatcherProvider>(logger), logger);
+                        Store = new FileStoreProvider(tenantConfig.Store, new ConfigWatcher<FileWatcherProvider>(logger), logger);
                     }
                     break;
                 case "SqlServerStoreProvider":
                     {
-                        Store = new SqlServerStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ConfigWatcher<SqlServerWatcherProvider>(logger), logger);
+                        Store = new SqlServerStoreProvider(tenantConfig.Store, new ConfigWatcher<SqlServerWatcherProvider>(logger), logger);
                     }
                     break;
                 case "MongoStoreProvider":
                     {
-                        Store = new MongoStoreProvider(tenantConfig.Store.Connection, tenantConfig.Store.StartEntityName,
-                                                      new ConfigWatcher<MongoWatcherProvider>(logger), logger);
+                        Store = new MongoStoreProvider(tenantConfig.Store, new ConfigWatcher<MongoWatcherProvider>(logger), logger);
                     }
                     break;
             }
@@ -94,26 +93,36 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
-        public LoadDataResult Load(bool startingUp)
+        public LoadDataResult Load(bool startingUp, string entityName)
         {
             List<EntityChanges> tchanges = new List<EntityChanges>();
             Store.Watcher.StopMonitoring();
             Store.Watcher.ClearWatcher();
             Token = Store.Get(StartEntityName);
+            ACLToken = Store.GetRaw(ACLEntityName);
+
             DiscoverServices(Token);
-            //RawTokens.Clear();
+
             var newRawTokens = new Dictionary<string, JToken>();
-            foreach (var entity in Store.Watcher.GetEntities())
+            if (startingUp)
             {
-                var rawToken = Store.GetRaw(entity);
-                if (!startingUp && RawTokens.ContainsKey(entity))
+                newRawTokens.Add(StartEntityName, Store.GetRaw(StartEntityName));
+                newRawTokens.Add(ACLEntityName, ACLToken);
+            }
+            else
+            {
+                foreach (var entity in Store.Watcher.GetEntities())
                 {
-                    var previousToken = RawTokens[entity];
-                    var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
-                    JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
-                    tchanges.Add(new EntityChanges() { entity = entity, diffToken = diffToken });
+                    var rawToken = Store.GetRaw(entity);
+                    if (!startingUp && RawTokens.ContainsKey(entity))
+                    {
+                        var previousToken = RawTokens[entity];
+                        var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
+                        JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
+                        tchanges.Add(new EntityChanges() { entity = entity, diffToken = diffToken });
+                    }
+                    newRawTokens.Add(entity, rawToken);
                 }
-                newRawTokens.Add(entity, rawToken);
             }
             RawTokens.Clear();
             RawTokens = newRawTokens;

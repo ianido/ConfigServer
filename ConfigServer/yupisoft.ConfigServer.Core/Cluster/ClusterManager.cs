@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -10,6 +11,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using yupisoft.ConfigServer.Core.Utils;
 
 
 namespace yupisoft.ConfigServer.Core.Cluster
@@ -27,7 +29,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private int _NodesMonitoringMaxAttempts = 3;
         private int _NodesMonitoringSkipAttemptsOnFail = 3;
         private int _NodesMonitoringLife = 3;
-        private string _NodesMonitoringSecret = "123abc";
+        private HmacAuthenticationOptions _clusterSecurity;
+
 
 
         private List<Node> _nodes;    
@@ -58,11 +61,11 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _cfgServer.DataChanged += _cfgServer_DataChanged;
             _logger = logger;
             _nodes = new List<Node>();
-            _NodesMonitoringHeartbeat = clusterConfig.Value.NodesMonitoringInterval;
-            _NodesMonitoringMaxAttempts = clusterConfig.Value.NodesMonitoringMaxAttempts;
-            _NodesMonitoringSkipAttemptsOnFail = clusterConfig.Value.NodesMonitoringSkipAttemptsOnFail;
-            _NodesMonitoringLife = clusterConfig.Value.NodesMonitoringLife;
-            _NodesMonitoringSecret = clusterConfig.Value.NodesMonitoringSecret;
+            _NodesMonitoringHeartbeat = clusterConfig.Value.Monitoring.Interval;
+            _NodesMonitoringMaxAttempts = clusterConfig.Value.Monitoring.MaxAttempts;
+            _NodesMonitoringSkipAttemptsOnFail = clusterConfig.Value.Monitoring.SkipAttemptsOnFail;
+            _NodesMonitoringLife = clusterConfig.Value.Monitoring.NodesLife;
+            _clusterSecurity = clusterConfig.Value.Security;
 
             var nodesConfig = clusterConfig.Value.Nodes;
             foreach(var node in nodesConfig)
@@ -95,7 +98,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _logger.LogInformation("Created ClusterManager with " + _nodes.Count + " nodes.");
         }
 
-        private void _cfgServer_DataChanged(int tenantId, string entity, JToken diffToken)
+        private void _cfgServer_DataChanged(string tenantId, string entity, JToken diffToken)
         {
             _logger.LogInformation("Data changed Tenant " + tenantId + " entity: " + entity + " diff:" + diffToken?.ToString());
 
@@ -107,10 +110,10 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
         }
 
-        public List<int> TenantsToUpgrade(KeyValuePair<int,string>[] dataHash)
+        public List<string> TenantsToUpgrade(KeyValuePair<string, string>[] dataHash)
         {
-            List<int> TenantsToUpgrade = new List<int>();
-            var DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+            List<string> TenantsToUpgrade = new List<string>();
+            var DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<string, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
             // Check DataHash
             foreach (var dh in DataHash)
             {
@@ -122,15 +125,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         public HeartBeatMessageResponse ProcessHeartBeat(HeartBeatMessageRequest request)
         {
-            bool validSignature = Utils.StringHandling.CheckMessageSignature(request, _NodesMonitoringSecret);
-            if (!validSignature)
-            {
-                HeartBeatMessageResponse response = new HeartBeatMessageResponse();
-                response.Created = DateTime.UtcNow;
-                response.NodeId = selfNode.Id;
-                response.Result = HeartBeartCommandResult.InvalidSignature;
-                return response;
-            }
+           
             lock (selfNode)
             {
                 HeartBeatMessageResponse response = new HeartBeatMessageResponse();
@@ -138,12 +133,21 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 response.NodeAliveSince = _cfgServer.AliveSince;
                 response.LastLogId = selfNode.LastLogId;
                 response.NodeId = selfNode.Id;
+                if (request == null)
+                {
+                    _logger.LogTrace("Null message; Ignoring HeartBeat. ");
+                    response.Command = HeartBeartCommand.Unknow;
+                    response.Result = HeartBeartCommandResult.Error;
+                    return response;
+                }
+
                 UpdateNodes(request.Nodes);
 
                 if (selfNode.InUse)
                 {
                     _logger.LogTrace("Node in Use; Ignoring HeartBeat: " + request.Command);
-                    response.Command = HeartBeartCommand.InUse;
+                    response.Command = HeartBeartCommand.Abort;
+                    response.Result = HeartBeartCommandResult.InUse;
                     return response;
                 }
 
@@ -189,7 +193,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     // Si el nodo tiene Log 0 y fue creado despues que el nodo que hizo el request, deberemos comprobar el hash
                     if ((selfNode.LastLogId == 0) && (_cfgServer.AliveSince > request.NodeAliveSince))
                     {
-                        List<int> upgrade = TenantsToUpgrade(request.DataHash);
+                        List<string> upgrade = TenantsToUpgrade(request.DataHash);
 
                         if (upgrade.Count > 0)
                         {
@@ -215,6 +219,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                         }
                         catch (Exception ex)
                         {
+                            response.Result = HeartBeartCommandResult.Error;
                             _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
                         }
                     }
@@ -223,7 +228,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     {
                         try
                         {
-                            List<int> upgrade = TenantsToUpgrade(request.DataHash);
+                            List<string> upgrade = TenantsToUpgrade(request.DataHash);
 
                             if (upgrade.Count > 0)
                             {
@@ -233,6 +238,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                         }
                         catch (Exception ex)
                         {
+                            response.Result = HeartBeartCommandResult.Error;
                             _logger.LogCritical("Exception procesing node: " + request.NodeId + ex.ToString());
                         }
                     }
@@ -261,7 +267,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
         }
 
-        public void HeartBeatSyncRequest(string NodeId, HeartBeatMessageResponse response, bool fullSync, int[] tenants = null)
+        public void HeartBeatSyncRequest(string NodeId, HeartBeatMessageResponse response, bool fullSync, string[] tenants = null)
         {
             HeartBeatMessageRequest req = new HeartBeatMessageRequest();
             req.Command = (fullSync ? HeartBeartCommand.FullSyncRequest : HeartBeartCommand.SyncRequest);
@@ -270,17 +276,17 @@ namespace yupisoft.ConfigServer.Core.Cluster
             req.NodeAliveSince = _cfgServer.AliveSince;
             req.LastLogId = selfNode.LastLogId;
             req.LastLogDate = selfNode.LastLogDate;
-            req.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+            req.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<string, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
 
             lock (_nodes) req.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
             if (tenants != null)
             {
-                foreach (int t in tenants)
+                foreach (string t in tenants)
                 {
                     req.Log.Add(new LogMessage() { Created = DateTime.UtcNow, Entity = "default", TenantId = t, JsonDiff = null, LogId = 0 });
                 }
             }
-            string msgData = Utils.StringHandling.SignMessage(req, _NodesMonitoringSecret);
+            string msgData = JsonConvert.SerializeObject(req, Formatting.None);
             HttpClient client = new HttpClient();
             Node requestNode = null;
             lock (_nodes) { requestNode = _nodes.FirstOrDefault(n => n.Id == NodeId); }
@@ -295,7 +301,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 response.Result = HeartBeartCommandResult.Success;
                 selfNode.InUse = true;
                 requestNode.InUse = true;
-                client.PostAsync(requestNode.Address + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json")).ContinueWith((a) =>
+                client.PostAsync(requestNode.Address + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey).ContinueWith((a) =>
                 {
                     lock (selfNode)
                     {
@@ -417,7 +423,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         public void HeartBeat(Node node)
         {
-            if ((node.Self) || (node.InUse)) return;
+           // if ((node.Self) || (node.InUse)) return;
+            if (node.InUse) return;
             if (node.SkipAttempts > 0)
             {
                 node.SkipAttempts--;
@@ -438,14 +445,14 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     request.NodeAliveSince = _cfgServer.AliveSince;
                     request.LastLogDate = selfNode.LastLogDate;
                     request.LastLogId = selfNode.LastLogId;
-                    request.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<int, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
+                    request.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<string, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
                     lock (_nodes) request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
-                    string msgData = Utils.StringHandling.SignMessage(request, _NodesMonitoringSecret);
+                    string msgData = JsonConvert.SerializeObject(request, Formatting.None);
                     HttpClient client = new HttpClient();
                     _logger.LogTrace("HeartBeat --> " + node.Id + " Hash:" + request.DataHash[0].Value + " Log:" + selfNode.LastLogId);
                     node.InUse = true;
 
-                    client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8, "application/json")).ContinueWith((a) =>
+                    client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey).ContinueWith((a) =>
                     {
                         lock (node)
                         {
@@ -454,7 +461,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 if ((a.Status == TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
                                 {
                                     ApiSingleResult<HeartBeatMessageResponse> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessageResponse>>(a.Result.Content.ReadAsStringAsync().Result);
-                                    if (rsMsg.Item == null)
+                                    if ((rsMsg == null) || (rsMsg.Item == null))
                                     {
                                         _logger.LogError("Node: " + node.Id + " return Invalid response. attempt: " + node.Attempts);
                                         node.Attempts++;
@@ -476,7 +483,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 else
                                 {
                                     node.Attempts++;
-                                    _logger.LogError("Unable to contact: " + node.Id + " attempt: " + node.Attempts);
+                                    _logger.LogError("Unable to contact: " + node.Id + " (" + a.Result != null ? a.Result.StatusCode.ToString() : "" + ") attempt: " + node.Attempts);
                                 }
 
                                 if (node.Attempts >= _NodesMonitoringMaxAttempts)

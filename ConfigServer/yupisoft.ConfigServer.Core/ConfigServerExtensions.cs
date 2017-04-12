@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using yupisoft.ConfigServer.Core.Cluster;
 using Microsoft.AspNetCore.Hosting;
 using System.IO;
+using Microsoft.AspNetCore.Builder;
 
 namespace yupisoft.ConfigServer.Core
 {
@@ -15,10 +16,15 @@ namespace yupisoft.ConfigServer.Core
     {
         public static IServiceCollection AddConfigServer(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment hostingEnvironment)
         {
-            var section = configuration.GetSection("ConfigServer");
-            
-            services.Configure<TenantsConfigSection>(section);
-            services.Configure<ClusterConfigSection>(section);
+            var mainSection = configuration.GetSection("ConfigServer");
+            var clusterSection = configuration.GetSection("ConfigServer:Cluster");
+            var securitySection = configuration.GetSection("ConfigServer:Cluster:Security");
+
+            services.Configure<TenantsConfigSection>(mainSection);
+            services.Configure<ClusterConfigSection>(clusterSection);
+            services.Configure<HmacAuthenticationOptions>(securitySection);
+
+            var settings = new TenantsConfigSection();
 
             services.AddSingleton<ConfigServerTenants>();
             services.AddSingleton<ConfigServerManager>();

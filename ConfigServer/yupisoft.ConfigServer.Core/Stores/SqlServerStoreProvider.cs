@@ -16,6 +16,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         private IConfigWatcher _watcher;
         private ILogger _logger;
         private string _entityName;
+        private string _aclName;
 
         public event StoreChanged Change;
 
@@ -36,10 +37,24 @@ namespace yupisoft.ConfigServer.Core.Stores
             }
         }
 
-        public SqlServerStoreProvider(string connectionString, string startEntityName, IConfigWatcher watcher, ILogger logger)
+        public string ACLEntityName
         {
-            ConnectionString = connectionString;
-            _entityName = startEntityName;
+            get
+            {
+                return _aclName;
+            }
+            set
+            {
+                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                _aclName = rgx.Replace(value, "");
+            }
+        }
+
+        public SqlServerStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger)
+        {
+            ConnectionString = config.Connection;
+            StartEntityName = config.StartEntityName;
+            ACLEntityName = config.ACLEntityName;
             _watcher = watcher;
             _logger = logger;
             _watcher.Change += _watcher_Change;

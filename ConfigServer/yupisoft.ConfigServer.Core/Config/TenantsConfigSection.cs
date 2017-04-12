@@ -10,15 +10,16 @@ namespace yupisoft.ConfigServer.Core
         public string Provider { get; set; }
         public string Connection { get; set; }
         public string StartEntityName { get; set; }
+        public string ACLEntityName { get; set; }
 
     }
 
     public class TenantConfigSection
     {
-        public int Id { get; set; }
+        public string Id { get; set; }
         public string Name { get; set; }
         public bool Enabled { get; set; }
-        public string Secret { get; set; }
+        public bool Encrypted { get; set; }
         public StoreConfigSection Store { get; set; }
 
         public TenantConfigSection()

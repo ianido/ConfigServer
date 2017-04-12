@@ -9,7 +9,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public DateTime Created { get; set; }
         public long LogId { get; set; }
         public bool Full { get; set; }
-        public int TenantId { get; set; }
+        public string TenantId { get; set; }
         public string Entity { get; set; }
         public string JsonDiff { get; set; }
     }

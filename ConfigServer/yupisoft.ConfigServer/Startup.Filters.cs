@@ -5,6 +5,8 @@ namespace yupisoft.ConfigServer
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.Mvc.Filters;
     using Microsoft.AspNetCore.Routing;
+    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.AspNetCore.Mvc.Authorization;
 
     public partial class Startup
     {
@@ -15,7 +17,7 @@ namespace yupisoft.ConfigServer
         /// Staging or Production by default.</param>
         private static void ConfigureFilters(IHostingEnvironment environment, FilterCollection filters)
         {
-            
+
         }
     }
 }

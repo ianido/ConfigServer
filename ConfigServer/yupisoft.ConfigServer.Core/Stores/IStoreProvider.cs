@@ -12,6 +12,7 @@ namespace yupisoft.ConfigServer.Core
         IConfigWatcher Watcher { get; }
         event StoreChanged Change;
         string StartEntityName { get; }
+        string ACLEntityName { get; }
         JToken Get(string entityName);
         JToken GetRaw(string entityName);
         void Set(JToken node, string entityName);

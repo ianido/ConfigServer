@@ -11,6 +11,8 @@ using System.IO;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Http;
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace yupisoft.ConfigServer
 {
     public partial class Startup
@@ -28,7 +30,8 @@ namespace yupisoft.ConfigServer
         public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory, IServiceProvider provider)
         {
             ConfigureLogging(app, loggerFactory, this.configuration);
-            ConfigureAPISecurity(app);
+            ConfigureAPISecurity(app);        
+            app.UseHmacAuthentication();
             app.UseMvc();
         }
 
@@ -37,24 +40,35 @@ namespace yupisoft.ConfigServer
         public void ConfigureServices(IServiceCollection services)
         {
             // Set the port of this server
-            configuration["ConfigServer:OwnNodeName"] = Program.NodeName.ToString();
-            configuration["ConfigServer:OwnNodeUrl"] = Program.NodeUrl.ToString();
+            configuration["ConfigServer:Cluster:OwnNodeName"] = Program.NodeName.ToString();
+            configuration["ConfigServer:Cluster:OwnNodeUrl"] = Program.NodeUrl.ToString();
 
 
             // First add services that are intrinsic for ServiceCollection
             services.AddOptions();
             services.AddAuthentication();
+            
             ConfigureLoggingServices(services);
             ConfigureAPISecurityServices(services);
-            
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("Cluster",
+                    policy => policy.AddRequirements(new ClusterApiAuthRequirement()));
+                options.AddPolicy("Customer",
+                    policy => policy.AddRequirements(new CustomerApiAuthRequirement()));
+            });
+            services.AddMemoryCache();
             services.AddConfigServer(configuration, hostingEnvironment);
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.AddSingleton<IAuthorizationHandler, CheckClusterUserAuthorizationHandler>();
+            services.AddSingleton<IAuthorizationHandler, CheckCustomerUserAuthorizationHandler>();
 
             //ConfigureCachingServices(services, configuration);
 
             IMvcBuilder mvcBuilder = services.AddMvc(
                 mvcOptions =>
                 {
+
                     ConfigureFilters(this.hostingEnvironment, mvcOptions.Filters);
                 }).AddJsonOptions(options =>
                 {
