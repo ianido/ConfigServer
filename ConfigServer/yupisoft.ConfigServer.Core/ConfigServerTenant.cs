@@ -31,6 +31,7 @@ namespace yupisoft.ConfigServer.Core
         public IStoreProvider Store { get; }
         public string Id { get { return TenantConfig.Id; } }
         public string Name { get { return TenantConfig.Name; } }
+        public bool EnableServiceDiscovery { get { return TenantConfig.EnableServiceDiscovery; } }
         public bool Encrypted { get { return TenantConfig.Encrypted; } }
         public string StartEntityName { get { return Store.StartEntityName; } }
         public string ACLEntityName { get { return Store.ACLEntityName; } }

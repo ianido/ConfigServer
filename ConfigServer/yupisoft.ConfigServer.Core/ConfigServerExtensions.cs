@@ -19,10 +19,13 @@ namespace yupisoft.ConfigServer.Core
             var mainSection = configuration.GetSection("ConfigServer");
             var clusterSection = configuration.GetSection("ConfigServer:Cluster");
             var securitySection = configuration.GetSection("ConfigServer:Cluster:Security");
+            var sdSection = configuration.GetSection("ConfigServer:ServiceDiscovery");
 
             services.Configure<TenantsConfigSection>(mainSection);
             services.Configure<ClusterConfigSection>(clusterSection);
             services.Configure<HmacAuthenticationOptions>(securitySection);
+            services.Configure<ServiceDiscoveryConfigSection>(sdSection);
+
 
             var settings = new TenantsConfigSection();
 

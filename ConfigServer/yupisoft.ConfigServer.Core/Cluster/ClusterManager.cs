@@ -19,6 +19,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
     public class ClusterManager
     {
+
         private Timer _timer;
 
         private ILogger _logger;
@@ -29,6 +30,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private int _NodesMonitoringMaxAttempts = 3;
         private int _NodesMonitoringSkipAttemptsOnFail = 3;
         private int _NodesMonitoringLife = 3;
+
         private HmacAuthenticationOptions _clusterSecurity;
 
 
@@ -67,6 +69,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _NodesMonitoringLife = clusterConfig.Value.Monitoring.NodesLife;
             _clusterSecurity = clusterConfig.Value.Security;
 
+
+
             var nodesConfig = clusterConfig.Value.Nodes;
             foreach(var node in nodesConfig)
             {
@@ -90,7 +94,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
             if (selfNode == null)
             {
-                _logger.LogCritical("The current node is not in the Nodes List.");
+                _logger.LogCritical("The current node (SelfNode) is not in the Nodes List.");
                 Environment.Exit(1);
             }
 
@@ -193,11 +197,15 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     // Si el nodo tiene Log 0 y fue creado despues que el nodo que hizo el request, deberemos comprobar el hash
                     if ((selfNode.LastLogId == 0) && (_cfgServer.AliveSince > request.NodeAliveSince))
                     {
+                        // Hay que verificar que el request node no sea un Client Node
+                        // o
+                        // Lo otro es que en ves de pedirle una sincronizacion con un request,
+                        // podria responderle que me mande una sinc en el proximo heartbeat  (Creo que esto seria mejor)
+
                         List<string> upgrade = TenantsToUpgrade(request.DataHash);
 
                         if (upgrade.Count > 0)
                         {
-                            selfNode.Status = SelfNodeStatus.Unsyncronized;
                             // Tienen diferente hash, pedire una sincronizacion completa
                             HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
                         }
@@ -213,7 +221,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
                         try
                         {
                             _logger.LogTrace("Self Node needs upgrade from: " + request.NodeId + ", SelfLog: " + selfNode.LastLogId + " versus:" + request.LastLogId);
-                            selfNode.Status = SelfNodeStatus.Unsyncronized;
 
                             HeartBeatSyncRequest(request.NodeId, response, false);
                         }
@@ -232,7 +239,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
                             if (upgrade.Count > 0)
                             {
-                                selfNode.Status = SelfNodeStatus.Unsyncronized;
                                 HeartBeatSyncRequest(request.NodeId, response, true, upgrade.ToArray());
                             }
                         }
@@ -423,7 +429,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         public void HeartBeat(Node node)
         {
-            if ((node.Self) || (node.InUse)) return;
+            if ((node.Self) || (node.InUse) || (node.Mode == Node.NodeMode.Client)) return;
             if (node.InUse) return;
             if (node.SkipAttempts > 0)
             {
@@ -446,7 +452,10 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     request.LastLogDate = selfNode.LastLogDate;
                     request.LastLogId = selfNode.LastLogId;
                     request.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new KeyValuePair<string, string>(p.TenantConfig.Id, p.DataHash)).ToArray();
-                    lock (_nodes) request.Nodes = _nodes.Select(e => e.NodeConfig).ToArray();
+                    
+                    // Only send in heartbeat info the server nodes.
+                    lock (_nodes) request.Nodes = _nodes.Where(n => n.Mode == Node.NodeMode.Server).Select(e => e.NodeConfig).ToArray();
+
                     string msgData = JsonConvert.SerializeObject(request, Formatting.None);
                     HttpClient client = new HttpClient();
                     _logger.LogTrace("HeartBeat --> " + node.Id + " Hash:" + request.DataHash[0].Value + " Log:" + selfNode.LastLogId);
@@ -483,7 +492,11 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 else
                                 {
                                     node.Attempts++;
-                                    _logger.LogError("Unable to contact: " + node.Id + " (" + a.Result != null ? a.Result.StatusCode.ToString() : "" + ") attempt: " + node.Attempts);
+                                    node.Priority--;
+                                    if (a.Status == TaskStatus.RanToCompletion)
+                                        _logger.LogError("Error contacting: " + node.Id + " (" + a.Result != null ? a.Result.StatusCode.ToString() : "" + ") attempt: " + node.Attempts);
+                                    else
+                                        _logger.LogError("Unable to contact: " + node.Id + " (" + a.Status.ToString() + ") attempt: " + node.Attempts);
                                 }
 
                                 if (node.Attempts >= _NodesMonitoringMaxAttempts)
@@ -529,19 +542,30 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private void Timer_Elapsed(object state)
         {
             _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat); // Disable the timer;
-            Node[] nodes = null;
-            lock (_nodes)
+            if (selfNode.Mode == Node.NodeMode.Server)
             {
-                nodes = _nodes.ToArray();
-            }
-            foreach (var w in nodes)
-            {
-                lock (w)
+                Node[] nodes = null;
+                lock (_nodes)
                 {
-                    if (w.Active)
+                    nodes = _nodes.ToArray();
+                }
+                foreach (var w in nodes)
+                {
+                    lock (w)
                     {
-                        HeartBeat(w);
+                        if (w.Active)
+                        {
+                            HeartBeat(w);
+                        }
                     }
+                }
+            }
+            else
+            {                
+                lock (_nodes)
+                {
+                    Node node = _nodes.OrderByDescending(n => n.Priority).FirstOrDefault(n => !n.Self && n.Active && n.Mode == Node.NodeMode.Server);
+                    HeartBeat(node);
                 }
             }
             _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat); // Reenable the timer;

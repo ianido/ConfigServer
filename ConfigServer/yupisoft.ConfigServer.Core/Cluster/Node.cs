@@ -6,6 +6,14 @@ namespace yupisoft.ConfigServer.Core.Cluster
 {
     public class Node
     {
+        public enum NodeMode
+        {            
+            Server, /* Server mode: Server nodes heartbeat other server nodes and receive hartbeat, and replicate changes and discovery server nodes between them */
+            Client  /* Client mode: Client nodes heartbeat only one server node (the highest priority), 
+                       if it fail then decrease the priority of that node and the next heartbeat will be performed against another node,
+                       and replicate changes from server and discovery nodes between them.
+                       Client nodes do not receive heartbeats from server nodes.*/
+        }
         private bool _inuse = false;
         public NodeConfigSection NodeConfig { get; set; }
         public bool Active { get; set; }
@@ -27,20 +35,30 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 _inuse = value;
             }
         }
+        public int Priority { get; set; }
         public int InUseCycles { get; set; }
         public int InUseMaxCycles { get; set; }
         public string Id { get; set; }
         public string Address { get; set; }
         public bool Self { get; set; }
+        public NodeMode Mode
+        {
+            get
+            {
+                if (NodeConfig.Mode.ToLower() == "server") return NodeMode.Server;
+                if (NodeConfig.Mode.ToLower() == "client") return NodeMode.Client;
+                return NodeMode.Server;
+            }
+        }
         public void ResetLife()
         {
             Life = 2000;
         }
-
         public Node()
         {
             InUseMaxCycles = 20;
             Life = 2000;
+            Priority = 9999;
         }
     }
 }

@@ -39,10 +39,12 @@ namespace yupisoft.ConfigServer.Core
             }
             _logger.LogTrace("Created ConfigManager with " + TenantManager.Tenants.Count + " tenants.");
             serviceManager.StartMonitoring();
+            serviceManager.StartServiceDiscovery();
         }
 
         private void Store_Change(IStoreProvider sender, string entityName)
         {
+            ServiceManager.StopServiceDiscovery();
             ServiceManager.StopMonitoring();
             foreach (var tenant in TenantManager.Tenants)
             {
@@ -54,7 +56,8 @@ namespace yupisoft.ConfigServer.Core
                             DataChanged?.Invoke(tenant.TenantConfig.Id, e.entity, e.diffToken);
                 }
             }
-            ServiceManager.StartMonitoring();            
+            ServiceManager.StartMonitoring();
+            ServiceManager.StartServiceDiscovery();
         }
 
         private ConfigServerTenant GetTenant(string tenantId)
@@ -116,6 +119,7 @@ namespace yupisoft.ConfigServer.Core
 
             lock (tenant.Token)
             {
+                
                 if (tenant.Store.Watcher.IsWatching(newToken.Entity))
                 {
                     JToken rawToken = tenant.Store.GetRaw(newToken.Entity);

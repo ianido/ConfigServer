@@ -12,18 +12,18 @@ namespace yupisoft.ConfigServer.Core.Utils
 {
     public static class HttpClientExtensions
     {
-        public static async Task<HttpResponseMessage> PostAsync(this HttpClient client, string requestUri, HttpContent content, string APPId, string APIKey, bool encrypt = false)
+        public static Task<HttpResponseMessage> PostAsync(this HttpClient client, string requestUri, HttpContent content, string APPId, string APIKey, bool encrypt = false)
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, requestUri);
             request.Content = content;
-            return await client.SendAsync(request, CancellationToken.None, APPId, APIKey, encrypt);
+            return client.SendAsync(request, CancellationToken.None, APPId, APIKey, encrypt);
         }
 
-        public static async Task<HttpResponseMessage> GetAsync(this HttpClient client, string requestUri, HttpContent content, string APPId, string APIKey, bool encrypt = false)
+        public static Task<HttpResponseMessage> GetAsync(this HttpClient client, string requestUri, HttpContent content, string APPId, string APIKey, bool encrypt = false)
         {
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             request.Content = content;
-            return await client.SendAsync(request, CancellationToken.None, APPId, APIKey, encrypt);
+            return client.SendAsync(request, CancellationToken.None, APPId, APIKey, encrypt);
         }
 
         public static Task<HttpResponseMessage> SendAsync(this HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken, string APPId, string APIKey, bool encrypt = false)
@@ -82,31 +82,32 @@ namespace yupisoft.ConfigServer.Core.Utils
             {
                 if ((t.Status == TaskStatus.RanToCompletion) && (t.Result.IsSuccessStatusCode))
                 {
-                    if (response.Headers.Contains("Encrypted"))
+                    var res = t.Result;
+                    if (res.Headers.Contains("Encrypted"))
                     {
-                        string[] enc = response.Headers.GetValues("Encrypted").ToArray();
-                        if ((enc.Length > 0) && (response.Content != null))
+                        string[] enc = res.Headers.GetValues("Encrypted").ToArray();
+                        if ((enc.Length > 0) && (res.Content != null))
                         {
                             // Signature is present in the message, check signature
                             if (bool.TryParse(enc[0], out bool encrypted))
                             {
-                                byte[] content = response.Content.ReadAsByteArrayAsync().Result;
+                                byte[] content = res.Content.ReadAsByteArrayAsync().Result;
                                 var dcontent = StringHandling.Decrypt(content, APIKey, nonce);
-                                var headers = response.Content.Headers.ToArray();
-                                response.Content = new ByteArrayContent(dcontent);
+                                var headers = res.Content.Headers.ToArray();
+                                res.Content = new ByteArrayContent(dcontent);
                                 foreach (var h in headers)
-                                    response.Content.Headers.Add(h.Key, h.Value);
+                                    res.Content.Headers.Add(h.Key, h.Value);
                             }
                         }
                     }
-                    if (response.Headers.Contains("Signature"))
+                    if (res.Headers.Contains("Signature"))
                     {
-                        string[] sig = response.Headers.GetValues("Signature").ToArray();
+                        string[] sig = res.Headers.GetValues("Signature").ToArray();
 
-                        if ((sig.Length > 0) && (response.Content != null))
+                        if ((sig.Length > 0) && (res.Content != null))
                         {
                             // Signature is present in the message, check signature
-                            byte[] content = response.Content.ReadAsByteArrayAsync().Result;
+                            byte[] content = res.Content.ReadAsByteArrayAsync().Result;
 
                             using (HMACSHA256 hmac = new HMACSHA256(secretKeyBytes))
                             {

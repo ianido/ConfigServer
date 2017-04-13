@@ -20,6 +20,7 @@ namespace yupisoft.ConfigServer.Core
         public string Name { get; set; }
         public bool Enabled { get; set; }
         public bool Encrypted { get; set; }
+        public bool EnableServiceDiscovery { get; set; }
         public StoreConfigSection Store { get; set; }
 
         public TenantConfigSection()
