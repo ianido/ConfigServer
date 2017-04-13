@@ -32,6 +32,7 @@ namespace yupisoft.ConfigServer
             ConfigureLogging(app, loggerFactory, this.configuration);
             ConfigureAPISecurity(app);        
             app.UseHmacAuthentication();
+            app.UseMiddleware<ResponseHandlingMiddleware>();
             app.UseMvc();
         }
 
@@ -62,6 +63,7 @@ namespace yupisoft.ConfigServer
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddSingleton<IAuthorizationHandler, CheckClusterUserAuthorizationHandler>();
             services.AddSingleton<IAuthorizationHandler, CheckCustomerUserAuthorizationHandler>();
+
 
             //ConfigureCachingServices(services, configuration);
 

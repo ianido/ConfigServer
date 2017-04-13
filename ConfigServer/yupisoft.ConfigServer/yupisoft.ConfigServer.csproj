@@ -52,18 +52,14 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
-
-  <ItemGroup>
-    <Compile Update="MainService.cs">
-      <SubType>Component</SubType>
-    </Compile>
-  </ItemGroup>
-
   <ItemGroup>
     <Content Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="Examples\sampleinheritance.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Examples\users.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

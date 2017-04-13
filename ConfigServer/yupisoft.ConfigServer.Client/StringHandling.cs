@@ -4,14 +4,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using yupisoft.ConfigServer.Core.Cluster;
 
-namespace yupisoft.ConfigServer.Core.Utils
+
+namespace yupisoft.ConfigServer.Client
 {
     public static class StringHandling
     {
         public static string DefaultSalt = "o6806642kbM7c5";
-
         public static UInt64 CalculateHash(string read)
         {
             UInt64 hashedValue = 3074457345618258791ul;

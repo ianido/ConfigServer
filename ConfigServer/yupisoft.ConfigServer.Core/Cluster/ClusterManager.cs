@@ -301,7 +301,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 response.Result = HeartBeartCommandResult.Success;
                 selfNode.InUse = true;
                 requestNode.InUse = true;
-                client.PostAsync(requestNode.Address + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey).ContinueWith((a) =>
+                client.PostAsync(requestNode.Address + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey, _clusterSecurity.Encrypted).ContinueWith((a) =>
                 {
                     lock (selfNode)
                     {
@@ -423,7 +423,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         public void HeartBeat(Node node)
         {
-           // if ((node.Self) || (node.InUse)) return;
+            if ((node.Self) || (node.InUse)) return;
             if (node.InUse) return;
             if (node.SkipAttempts > 0)
             {
@@ -452,7 +452,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     _logger.LogTrace("HeartBeat --> " + node.Id + " Hash:" + request.DataHash[0].Value + " Log:" + selfNode.LastLogId);
                     node.InUse = true;
 
-                    client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey).ContinueWith((a) =>
+                    client.PostAsync(node.Address + "/api/Cluster/Heartbeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey,_clusterSecurity.Encrypted).ContinueWith((a) =>
                     {
                         lock (node)
                         {

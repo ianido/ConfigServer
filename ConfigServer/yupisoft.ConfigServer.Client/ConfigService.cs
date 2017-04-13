@@ -16,6 +16,7 @@ namespace yupisoft.ConfigServer.Client
         private string _rootnode = "";
         private string _appId = "";
         private string _apiKey = "";
+        private bool _encrypt = false;
         private string _tenantId;
         private HttpClient client
         {
@@ -39,14 +40,24 @@ namespace yupisoft.ConfigServer.Client
         }
 #endif
 
+        public ConfigService(string serveraddr, string rootnode, string tenantId)
+        {
+            _appId = "";
+            _apiKey = "";
+            _tenantId = tenantId;
+            _serveraddr = serveraddr;
+            _rootnode = rootnode;
+            if (!_serveraddr.EndsWith("/")) _serveraddr += "/";
+        }
 
-        public ConfigService(string serveraddr, string rootnode, string tenantId, string AppId, string APIKey)
+        public ConfigService(string serveraddr, string rootnode, string tenantId, string AppId, string APIKey, bool encrypt = false)
         {
             _appId = AppId;
             _apiKey = APIKey;
             _tenantId = tenantId;
             _serveraddr = serveraddr;
             _rootnode = rootnode;
+            _encrypt = encrypt;
             if (!_serveraddr.EndsWith("/")) _serveraddr += "/";
         }
 
@@ -59,7 +70,8 @@ namespace yupisoft.ConfigServer.Client
             var message = new HttpRequestMessage(); 
             message.Method = HttpMethod.Get;
             message.RequestUri = new Uri(_serveraddr + "api/"+_tenantId+"/config/get/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
-            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey).Result;
+            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey, _encrypt).Result;
+            if (!response.IsSuccessStatusCode) throw new HttpRequestException("Response Code: " + response.StatusCode + ".");
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }
@@ -70,7 +82,8 @@ namespace yupisoft.ConfigServer.Client
             var message = new HttpRequestMessage();
             message.Method = HttpMethod.Get;
             message.RequestUri = new Uri(_serveraddr + "api/" + _tenantId + "/config/node/" + entity + "/" + _rootnode + ((!string.IsNullOrEmpty(_rootnode) && !string.IsNullOrEmpty(path)) ? "." : "") + path);
-            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey).Result;
+            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey, _encrypt).Result;
+            if (!response.IsSuccessStatusCode) throw new HttpRequestException("Response Code: " + response.StatusCode + ".");
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }
@@ -84,7 +97,8 @@ namespace yupisoft.ConfigServer.Client
             message.Method = HttpMethod.Post;
             message.Content = content;
             message.RequestUri = new Uri(_serveraddr + "api/" + _tenantId + "/config/set");
-            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey).Result;
+            var response = client.SendAsync(message, new CancellationToken(), _appId, _apiKey, _encrypt).Result;
+            if (!response.IsSuccessStatusCode) throw new HttpRequestException("Response Code: " + response.StatusCode + ".");
             string json = response.Content.ReadAsStringAsync().Result;
             return json;
         }

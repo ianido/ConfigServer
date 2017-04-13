@@ -67,8 +67,12 @@ namespace yupisoft.ConfigServer.Core.Stores
             get { return _entityName; }
             set
             {
-                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
-                _entityName = rgx.Replace(value, "");
+                if (string.IsNullOrEmpty(value)) _entityName = value;
+                else
+                {
+                    Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                    _entityName = rgx.Replace(value, "");
+                }
             }
         }
         public string ACLEntityName
@@ -76,8 +80,12 @@ namespace yupisoft.ConfigServer.Core.Stores
             get { return _aclName; }
             set
             {
-                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
-                _aclName = rgx.Replace(value, "");
+                if (string.IsNullOrEmpty(value)) _aclName = value;
+                else
+                {
+                    Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                    _aclName = rgx.Replace(value, "");
+                }
             }
         }
 

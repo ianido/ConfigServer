@@ -29,9 +29,18 @@ namespace yupisoft.ConfigServer.Core
     {
         public TenantConfigSection TenantConfig { get; private set; }
         public IStoreProvider Store { get; }
+        public string Id { get { return TenantConfig.Id; } }
+        public string Name { get { return TenantConfig.Name; } }
+        public bool Encrypted { get { return TenantConfig.Encrypted; } }
         public string StartEntityName { get { return Store.StartEntityName; } }
         public string ACLEntityName { get { return Store.ACLEntityName; } }
         public JToken Token { get; private set; }
+        public JTenantACL ACL {
+            get {
+                if (ACLToken != null) return ACLToken.ToObject<JTenantACL>();
+                return null;
+            }
+        }
         public JToken ACLToken { get; private set; }
         public Dictionary<string, JToken> RawTokens { get; private set; }
         public Dictionary<string, Service> Services { get; private set; }
@@ -99,7 +108,7 @@ namespace yupisoft.ConfigServer.Core
             Store.Watcher.StopMonitoring();
             Store.Watcher.ClearWatcher();
             Token = Store.Get(StartEntityName);
-            ACLToken = Store.GetRaw(ACLEntityName);
+            if (!string.IsNullOrEmpty(ACLEntityName)) ACLToken = Store.GetRaw(ACLEntityName);
 
             DiscoverServices(Token);
 
@@ -107,7 +116,7 @@ namespace yupisoft.ConfigServer.Core
             if (startingUp)
             {
                 newRawTokens.Add(StartEntityName, Store.GetRaw(StartEntityName));
-                newRawTokens.Add(ACLEntityName, ACLToken);
+                if (!string.IsNullOrEmpty(ACLEntityName)) newRawTokens.Add(ACLEntityName, ACLToken);
             }
             else
             {
@@ -119,7 +128,7 @@ namespace yupisoft.ConfigServer.Core
                         var previousToken = RawTokens[entity];
                         var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
                         JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
-                        tchanges.Add(new EntityChanges() { entity = entity, diffToken = diffToken });
+                        if (diffToken != null) tchanges.Add(new EntityChanges() { entity = entity, diffToken = diffToken });
                     }
                     newRawTokens.Add(entity, rawToken);
                 }

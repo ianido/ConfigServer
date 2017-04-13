@@ -13,14 +13,14 @@ namespace Microsoft.AspNetCore.Builder
     public class CustomerApiAuthRequirement : IAuthorizationRequirement
     {
     }
-    public class CheckCustomerUserAuthorizationHandler : AuthorizationHandler<ClusterApiAuthRequirement>
+    public class CheckCustomerUserAuthorizationHandler : AuthorizationHandler<CustomerApiAuthRequirement>
     {
         private readonly IHttpContextAccessor _accessor;
         public CheckCustomerUserAuthorizationHandler(IHttpContextAccessor accessor)
         {
             _accessor = accessor;
         }
-        protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, ClusterApiAuthRequirement requirement)
+        protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CustomerApiAuthRequirement requirement)
         {
             if (context.User.HasClaim(claim => claim.Type == ClaimTypes.Role && claim.Value == "Customer"))
             {

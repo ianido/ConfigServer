@@ -12,6 +12,7 @@ namespace Microsoft.AspNetCore.Builder
         public ulong MaxRequestAgeInSeconds { get; set; }
         public string AppId { get; set; }
         public string SecretKey { get; set; }
+        public bool Encrypted { get; set; }
 
         public HmacAuthenticationOptions()
         {

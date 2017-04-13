@@ -18,12 +18,13 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Linq;
 using yupisoft.ConfigServer.Core;
-
+using yupisoft.ConfigServer.Core.Utils;
 
 namespace Microsoft.AspNetCore.Authentication.Hmac
 {
     internal class HmacAuthenticationHandler : AuthenticationHandler<HmacAuthenticationOptions>
     {
+        
         public class HmacValidationResult
         {
             public string AppId { get; set; }
@@ -63,7 +64,7 @@ namespace Microsoft.AspNetCore.Authentication.Hmac
             if (res.Valid)
             {
                 var claimId = new ClaimsIdentity("Hmac");
-                claimId.AddClaim(new Claim(ClaimTypes.Name, res.Name));
+                claimId.AddClaim(new Claim(ClaimTypes.Name, res.AppId));
                 if ((res.Roles != null) && (res.Roles.Length > 0))
                 foreach (var r in res.Roles)
                    claimId.AddClaim(new Claim(ClaimTypes.Role, r));
@@ -130,21 +131,23 @@ namespace Microsoft.AspNetCore.Authentication.Hmac
             var sharedKey = "";
             string roles = null;
             string name = "";
+            bool encryption = false;
 
             if (IsReplayRequest(nonce, requestTimeStamp))
             {
                 return HmacValidationResult.Fail(AppId);
             }
 
-            if (AppId == "Cluster")
+            if (AppId == Options.AppId)
             {
                 if (Options.AppId != AppId)
                 {
                     return HmacValidationResult.Fail(AppId);
                 }
-                name = "Cluster";
+                name = Options.AppId;
                 sharedKey = Options.SecretKey;
                 roles = "Cluster";
+                encryption = Options.Encrypted;
             }
             else
             {
@@ -156,17 +159,31 @@ namespace Microsoft.AspNetCore.Authentication.Hmac
                 {
                     var tenantId = groups[1].Value;
                     var tenant = _tenants.Tenants.FirstOrDefault(t => t.TenantConfig.Id == tenantId);
+                    
                     if (tenant != null)
                     {
-                        JToken _aclToken = tenant.ACLToken;
+                        JTenantACL _acl = tenant.ACL;
+                        encryption = tenant.Encrypted;
 
-                        sharedKey = _aclToken.SelectToken("$.apps[?(@.appid == '" + AppId + "')].secret").Value<string>();
+                        if (tenant.ACLToken == null)
+                        {
+                            // No authentication is enabled
+                            return HmacValidationResult.Success(AppId, AppId, new string[1] { "Customer" });
+                        }
+                        if (tenant.ACL == null)
+                        {
+                            // Incorrect serialization
+                            return HmacValidationResult.Fail(AppId);
+                        }
+                        sharedKey = _acl.Apps.FirstOrDefault(a => a.AppId == AppId)?.Secret;
                         if (string.IsNullOrEmpty(sharedKey))
                             return HmacValidationResult.Fail(AppId);
                         else
                         {
-                            name = "Customer";
-                            roles = _aclToken.SelectToken("$.apps[?(@.appid == '" + AppId + "')].roles").Value<string>();
+                            name = AppId;
+                            roles = _acl.Apps.FirstOrDefault(a => a.AppId == AppId)?.Roles;
+                            if (string.IsNullOrEmpty(roles)) roles = "Customer";
+                            else roles = "Customer,"+roles;
                         }
                     }
                     else
@@ -178,6 +195,24 @@ namespace Microsoft.AspNetCore.Authentication.Hmac
 
             req.EnableRewind();
             var body = ReadFully(req.Body);
+
+            if (!encryption)
+            {
+                // Check if request was encrypted anyway.
+                if (req.Headers.ContainsKey("Encrypted"))
+                {
+                    var encryptedHeader = req.Headers["Encrypted"];
+                    bool.TryParse(encryptedHeader, out bool requestEncrypted);
+                    if (requestEncrypted) encryption = true;
+                } 
+            }
+
+            if (encryption)
+            {
+                body = StringHandling.Decrypt(body, sharedKey, nonce);
+                req.Body = new MemoryStream(body);
+            }
+
             byte[] hash = ComputeHash(body);
             req.Body.Seek(0, SeekOrigin.Begin);
 

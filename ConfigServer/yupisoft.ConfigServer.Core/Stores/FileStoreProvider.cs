@@ -29,8 +29,12 @@ namespace yupisoft.ConfigServer.Core.Stores
             get { return _entityName; }
             set
             {
-                Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
-                _entityName = rgx.Replace(value, "");
+                if (string.IsNullOrEmpty(value)) _entityName = value;
+                else
+                {
+                    Regex rgx = new Regex("[^a-zA-Z0-9\\.]");
+                    _entityName = rgx.Replace(value, "");
+                }
             }
         }
         public string ACLEntityName
@@ -49,7 +53,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         {
             FilePath = config.Connection;
             _entityName = config.StartEntityName.Replace("/","\\");
-            _aclName = config.ACLEntityName.Replace("/", "\\");
+            _aclName = config.ACLEntityName?.Replace("/", "\\");
             _logger = logger;
             _watcher = watcher;
             _watcher.Change += _watcher_Change;
