@@ -12,28 +12,39 @@ namespace yupisoft.ConfigServer.Core
     {
         public string Id { get; set; }
         public bool Enabled { get; set; }
+        public bool HeartBeat { get; set; }
         public string Address { get; set; }
         public string Mode { get; set; }
+        public void CopyFrom(NodeConfigSection node)
+        {
+            this.Enabled = node.Enabled;
+            this.Mode = node.Mode;
+            this.Address = node.Address;
+        }
         public string Serialize() {
             if (string.IsNullOrEmpty(Mode)) Mode = "server";
             if (Mode!="server" && Mode != "client") Mode = "server";
-            return Id.ToString() + "|" + (Enabled ? "1" : "0") + "|" + Address + "|" + Mode[0];
+            return Id.ToString() + "|" + (Enabled ? "1" : "0") + "|" + Address + "|" + Mode[0]+ "|" + (HeartBeat ? "1" : "0");
         }
-        public void Deserialize(string serialized)
+        public static NodeConfigSection Deserialize(string serialized)
         {
-            if (string.IsNullOrEmpty(serialized)) return;
+            NodeConfigSection node = new NodeConfigSection();
+            if (string.IsNullOrEmpty(serialized)) return null;
             var parts = serialized.Split('|');
-            if (parts.Length < 5) return;
-            Id = parts[0];
-            Enabled = parts[1] == "1" ? true : false;
-            Address = parts[2];
-            if (parts[3] == "s") Mode = "server";
-            if (parts[3] == "c") Mode = "client";
+            if (parts.Length < 5) return null;
+            node.Id = parts[0];
+            node.Enabled = parts[1] == "1" ? true : false;
+            node.Address = parts[2];
+            if (parts[3] == "s") node.Mode = "server";
+            if (parts[3] == "c") node.Mode = "client";
+            node.HeartBeat = parts[4] == "1" ? true : false;
+            return node;
         }
         public NodeConfigSection()
         {
             Mode = "server";
             Enabled = false;
+            HeartBeat = true;
             Address = "";
         }
     }

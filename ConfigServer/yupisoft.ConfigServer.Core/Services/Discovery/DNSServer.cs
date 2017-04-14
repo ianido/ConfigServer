@@ -27,16 +27,24 @@ namespace yupisoft.ConfigServer.Core.Services
         {
             if (_config.Enabled)
             {
-                _logger.LogInformation("Starting DNS Server on Port:" + _config.Port + " Masterzone: " + _config.Masterzone + " Bound to Interface :" + _config.BindAddress);
-                IPAddress addr = IPAddress.Any;
-                if (_config.BindAddress.ToLower() != "any") addr = IPAddress.Parse(_config.BindAddress);
-                IPEndPoint endpoint = new IPEndPoint(addr, _config.Port);
+                try
+                {
+                    _logger.LogInformation("Starting DNS Server on Port:" + _config.Port + " Masterzone: " + _config.Masterzone + " Bound to Interface :" + _config.BindAddress);
+                    IPAddress addr = IPAddress.Any;
+                    if (_config.BindAddress.ToLower() != "any") addr = IPAddress.Parse(_config.BindAddress);
+                    IPEndPoint endpoint = new IPEndPoint(addr, _config.Port);
 
-                _dnsServer = new DnsServer(endpoint, _config.udpListenerCount, _config.tcpListenerCount);
-                _dnsServer.ClientConnected += Server_ClientConnected;
-                _dnsServer.QueryReceived += Server_QueryReceived;
+                    _dnsServer = new DnsServer(endpoint, _config.udpListenerCount, _config.tcpListenerCount);
+                    _dnsServer.ClientConnected += Server_ClientConnected;
+                    _dnsServer.QueryReceived += Server_QueryReceived;
 
-                _dnsServer.Start();
+                    _dnsServer.Start();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Unable to start DNS Server: " + ex.Message);
+
+                }
             }
             else
                 _logger.LogInformation("DNS Server is disabled");
@@ -44,7 +52,7 @@ namespace yupisoft.ConfigServer.Core.Services
 
         public void AttemptStop()
         {
-            _dnsServer.Stop();            
+            if (_dnsServer != null) _dnsServer.Stop();            
         }
 
 

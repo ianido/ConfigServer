@@ -24,7 +24,9 @@
         "$service": "true",
         "id": "srv01",
         "name": "Service on 01",
-        "tags": [ "primary" ],
+        "tags": [
+          "primary"
+        ],
         "address": "127.0.0.1",
         "port": 80,
         "config": {
@@ -52,8 +54,8 @@
             "id": "ssh",
             "name": "SSH TCP on port 80",
             "tcp": "$address:80",
-            "interval": "15s",
-            "timeout": "1s",
+            "interval": "10s",
+            "timeout": "9s",
             "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
           }
         ]

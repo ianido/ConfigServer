@@ -13,7 +13,7 @@ namespace yupisoft.ConfigServer.Core
 {
     public class ConfigServerServices 
     {
-        private static object objlock = new object();
+        private static object _lock = new object();
         private ILogger _logger;
         private Timer _timer;
         private ConfigServerTenants _tenants;

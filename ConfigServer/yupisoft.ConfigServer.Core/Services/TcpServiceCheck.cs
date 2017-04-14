@@ -11,7 +11,7 @@ namespace yupisoft.ConfigServer.Core.Services
     public class TcpServiceCheck : ServiceCheck
     {
         
-        private object _locking = new object();
+        private object _lock = new object();
 
         public TcpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig) : base(checkConfig, serviceConfig)
         {
@@ -28,7 +28,7 @@ namespace yupisoft.ConfigServer.Core.Services
             if (addr.Length < 2) throw new Exception("Tcp address needs a port.");
             client.ConnectAsync(IPAddress.Parse(addr[0]), int.Parse(addr[1])).ContinueWith((a) =>
             {
-                lock (_locking)
+                lock (_lock)
                 {
                     if ((a.Status == TaskStatus.RanToCompletion) && (a.IsCompleted) && (client.Connected))
                         _lastCheckStatus = ServiceCheckStatus.Passing;                       

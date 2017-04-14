@@ -19,6 +19,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         private string FILEDATEFORMAT = "yyyy-MM-dd-hh-mm-ss";
         private string _entityName;
         private string _aclName;
+        private object _lock = new object();
 
         public event StoreChanged Change;
 
@@ -67,7 +68,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         private string GetContent(string entityName)
         {
             entityName = entityName.Replace("/", "\\");
-            lock (FilePath)
+            lock (_lock)
             {
                 var fullFilePath = Path.Combine(FilePath, entityName);
                 var content = File.ReadAllText(fullFilePath);
@@ -98,7 +99,7 @@ namespace yupisoft.ConfigServer.Core.Stores
         {
             entityName = entityName.Replace("/", "\\");
             string content = JsonConvert.SerializeObject(node, Formatting.Indented);
-            lock (FilePath)
+            lock (_lock)
             {
                 var fullFilePath = Path.Combine(FilePath, entityName);                
                 string bkpfilePath = Path.Combine(FilePath, Path.GetFileNameWithoutExtension(entityName) + "_" + DateTime.UtcNow.ToString(FILEDATEFORMAT) + Path.GetExtension(entityName));

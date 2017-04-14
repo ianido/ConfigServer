@@ -27,6 +27,21 @@ namespace yupisoft.ConfigServer.Core
             }
         }
 
+        public void UpdateClusterNode(NodeConfigSection node)
+        {
+            var jsonString = File.ReadAllText(_AppSettings);
+            JToken jsonObject = JsonConvert.DeserializeObject<JToken>(jsonString);
+            JToken toEdit = jsonObject.SelectToken("ConfigServer.Nodes[?(@.Id == '" + node.Id + "')]");
+            if (toEdit != null)
+            {
+                toEdit["Enabled"] = node.Enabled;
+                toEdit["Address"] = node.Address;
+                toEdit["Mode"] = node.Mode;
+                var modifiedJsonString = JsonConvert.SerializeObject(jsonObject, Formatting.Indented);
+                File.WriteAllText(_AppSettings, modifiedJsonString);
+            }
+        }
+
         public void AddClusterNode(NodeConfigSection node)
         {
             var jsonString = File.ReadAllText(_AppSettings);
@@ -39,5 +54,6 @@ namespace yupisoft.ConfigServer.Core
                 File.WriteAllText(_AppSettings, modifiedJsonString);
             }
         }
+
     }
 }

@@ -24,7 +24,7 @@ namespace yupisoft.ConfigServer.Controllers
             _logger = logger;
             _clsManager = clsManager;
         }
-        
+        /*
         [HttpPost]
         [Route("api/[controller]/heartbeat")]        
         public IActionResult Heartbeat([FromBody]HeartBeatMessageRequest msg)
@@ -36,6 +36,27 @@ namespace yupisoft.ConfigServer.Controllers
                 bool success = true;
                 if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
                     else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
+                result.Item = _clsManager.ProcessHeartBeatRequest(msg);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogTrace("Error:" + ex.ToString());
+                result.messages.Add(new ApiResultMessage() { Message = ex.Message, MessageType = ApiResultMessage.MessageTypeValues.Error });
+            }
+            return result;
+        }*/
+
+        [HttpPost]
+        [Route("api/[controller]/heartbeat")]
+        public IActionResult Heartbeat([FromBody]HeartBeatMessage msg)
+        {
+
+            ApiSingleResult<HeartBeatMessage> result = new ApiSingleResult<HeartBeatMessage>();
+            try
+            {
+                bool success = true;
+                if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
+                else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
                 result.Item = _clsManager.ProcessHeartBeat(msg);
             }
             catch (Exception ex)

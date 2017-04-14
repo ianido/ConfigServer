@@ -10,7 +10,7 @@ namespace yupisoft.ConfigServer.Core.Services
     public class HttpServiceCheck : ServiceCheck
     {
 
-        private object _locking = new object();
+        private object _lock = new object();
 
         public HttpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig) : base(checkConfig, serviceConfig)
         {
@@ -25,7 +25,7 @@ namespace yupisoft.ConfigServer.Core.Services
             client.Timeout = Timeout;
             client.GetAsync(_checkConfig.Http).ContinueWith((a) =>
             {
-                lock (_locking)
+                lock (_lock)
                 {
                     if ((a.Status == TaskStatus.RanToCompletion) && (a.IsCompleted) && (a.Result.IsSuccessStatusCode))
                         _lastCheckStatus = ServiceCheckStatus.Passing;

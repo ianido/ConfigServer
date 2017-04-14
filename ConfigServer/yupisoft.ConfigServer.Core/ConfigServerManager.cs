@@ -12,7 +12,7 @@ namespace yupisoft.ConfigServer.Core
 
     public class ConfigServerManager
     {
-        private static object objlock = new object();
+        private object _lock = new object();
 
         private ILogger _logger;
 
@@ -76,7 +76,7 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
              
-            lock (tenant.Token)
+            lock (_lock)
             {
                 if (entityName == "@default") entityName = tenant.Store.StartEntityName;
                 JToken selToken = tenant.RawTokens[entityName].SelectToken(path);
@@ -97,7 +97,7 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            lock (tenant.Token)
+            lock (_lock)
             {
                 JToken selToken = tenant.Token.SelectToken(path);
                 if (selToken == null) return default(T);
@@ -117,7 +117,7 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            lock (tenant.Token)
+            lock (_lock)
             {
                 
                 if (tenant.Store.Watcher.IsWatching(newToken.Entity))
@@ -155,7 +155,7 @@ namespace yupisoft.ConfigServer.Core
             if (tenant == null) throw new Exception("Tenant: " + tenantId + " not found.");
             if (tenant.Token == null) throw new Exception("Tenant: " + tenantId + " not loaded.");
 
-            lock (tenant.Token)
+            lock (_lock)
             {
                 if (tenant.Store.Watcher.IsWatching(entity))
                 {
