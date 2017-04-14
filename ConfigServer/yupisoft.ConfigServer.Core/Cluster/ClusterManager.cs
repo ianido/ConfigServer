@@ -315,9 +315,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 node.SkipAttempts = 0;
                 node.ResetLife();
 
-                if (((selfNode.LastLogId == msg.LastLogId) &&
-                     ((_cfgServer.AliveSince < msg.NodeAliveSince) || ((selfNode.LastLogId > 0) && (selfNode.LastLogDate > msg.LastLogDate))))
-                    || (msg.LastLogId < selfNode.LastLogId))
+                if ( (
+                      (selfNode.LastLogId == msg.LastLogId) &&
+                      ((_cfgServer.AliveSince < msg.NodeAliveSince) || ((selfNode.LastLogId > 0) && (selfNode.LastLogDate > msg.LastLogDate)))
+                     )
+                     || (msg.LastLogId < selfNode.LastLogId)
+                   )
                 {
                     var req = CreateMessageFor(HeartBeartType.UpdateRequest, msg);
                     if (req.Log.Count > 0)
@@ -351,6 +354,70 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     if (applied) selfNode.LogMessages.Add(log);
                 }
                 _logger.LogTrace("Applied " + msg.Log.Count() + " logs successfully.");
+            }
+        }
+
+        public HeartBeatMessage ReceiveHeartBeat(HeartBeatMessage msg)
+        {
+            _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
+            if (msg.MessageType == HeartBeartType.UpdateRequest)
+            {
+                // Perform the updates
+                foreach (var log in msg.Log)
+                {
+                    bool applied = false;
+                    if (log.TenantId == null)
+                    {
+                        applied = true;
+                        _logger.LogTrace("<Empty log>");
+                    }
+                    else
+                    {
+                        if (log.Full)
+                            applied = _cfgServer.Set(new JNode("", JToken.Parse(log.JsonDiff), log.Entity), log.TenantId, true);
+                        else
+                            applied = _cfgServer.ApplyUpdate(log.TenantId, log.Entity, log.JsonDiff);
+                    }
+                    if (applied) selfNode.LogMessages.Add(log);
+                }
+                _logger.LogTrace("Applied " + msg.Log.Count() + " logs successfully.");
+
+                var response = CreateMessageFor(HeartBeartType.UpdateResponse, msg);
+                return response;
+            }
+            else
+            if (msg.MessageType == HeartBeartType.HeartBeatRequest)
+            {
+                if (
+                     (
+                       (selfNode.LastLogId == msg.LastLogId) && 
+                       ((_cfgServer.AliveSince < msg.NodeAliveSince) || ((selfNode.LastLogId > 0) && (selfNode.LastLogDate > msg.LastLogDate)))
+                     )
+                     || (msg.LastLogId < selfNode.LastLogId))
+                {
+                    var response = CreateMessageFor(HeartBeartType.UpdateRequest, msg);
+                    if (response.Log.Count > 0)
+                    {
+                        _logger.LogTrace(response.MessageType + " --> " + msg.NodeId + ". " + (response.Log[0].Full ? "FULL " : "") + "sync for: " + response.Log.Count + " tenants.");
+                        return response;
+                    }
+                    else
+                    {
+                        response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
+                        return response;
+                    }
+                }
+                else
+                {
+                    var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
+                    return response;
+                }
+            }
+            else
+            {
+                var response = CreateMessageFor(HeartBeartType.Unknow, msg);
+                _logger.LogError("Unsupported Message: " + msg.MessageType + " received from " + msg.NodeId);
+                return response;
             }
         }
 
@@ -449,66 +516,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
         }
 
-        public HeartBeatMessage ProcessHeartBeat(HeartBeatMessage msg)
-        {
-            _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
-            if (msg.MessageType == HeartBeartType.UpdateRequest)
-            {
-                // Perform the updates
-                foreach (var log in msg.Log)
-                {
-                    bool applied = false;
-                    if (log.TenantId == null)
-                    {
-                        applied = true;
-                        _logger.LogTrace("<Empty log>");
-                    }
-                    else
-                    {
-                        if (log.Full)
-                            applied = _cfgServer.Set(new JNode("", JToken.Parse(log.JsonDiff), log.Entity), log.TenantId, true);
-                        else
-                            applied = _cfgServer.ApplyUpdate(log.TenantId, log.Entity, log.JsonDiff);
-                    }
-                    if (applied) selfNode.LogMessages.Add(log);
-                }
-                _logger.LogTrace("Applied " + msg.Log.Count() + " logs successfully.");
 
-                var response = CreateMessageFor(HeartBeartType.UpdateResponse, msg);
-                return response;
-            }
-            else
-            if (msg.MessageType == HeartBeartType.HeartBeatRequest)
-            {
-                if (((selfNode.LastLogId == msg.LastLogId) && 
-                     ((_cfgServer.AliveSince < msg.NodeAliveSince) || ((selfNode.LastLogId > 0) && (selfNode.LastLogDate > msg.LastLogDate))))
-                    || (msg.LastLogId < selfNode.LastLogId))
-                {
-                    var response = CreateMessageFor(HeartBeartType.UpdateRequest, msg);
-                    if (response.Log.Count > 0)
-                    {
-                        _logger.LogTrace(response.MessageType + " --> " + msg.NodeId + ". " + (response.Log[0].Full ? "FULL " : "") + "sync for: " + response.Log.Count + " tenants.");
-                        return response;
-                    }
-                    else
-                    {
-                        response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
-                        return response;
-                    }
-                }
-                else
-                {
-                    var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
-                    return response;
-                }
-            }
-            else
-            {
-                var response = CreateMessageFor(HeartBeartType.Unknow, msg);                
-                _logger.LogError("Unsupported Message: " + msg.MessageType + " received from " + msg.NodeId);
-                return response;
-            }
-        }
 
         private void _cfgServer_DataChanged(string tenantId, string entity, JToken diffToken)
         {

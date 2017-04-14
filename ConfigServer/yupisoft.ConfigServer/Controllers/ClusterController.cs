@@ -57,7 +57,7 @@ namespace yupisoft.ConfigServer.Controllers
                 bool success = true;
                 if (success) result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Success });
                 else result.messages.Add(new ApiResultMessage() { MessageType = ApiResultMessage.MessageTypeValues.Error });
-                result.Item = _clsManager.ProcessHeartBeat(msg);
+                result.Item = _clsManager.ReceiveHeartBeat(msg);
             }
             catch (Exception ex)
             {
