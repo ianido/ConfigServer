@@ -14,7 +14,7 @@ namespace yupisoft.ConfigServer.Core
         public bool Enabled { get; set; }
         public bool FordwardingEnabled { get; set; }        
         public string BindAddress { get; set; }
-        public string Masterzone { get; set; }
+        public string Mainzone { get; set; }
         public int udpListenerCount { get; set; }
         public int tcpListenerCount { get; set; }
 
@@ -22,7 +22,7 @@ namespace yupisoft.ConfigServer.Core
         {
             udpListenerCount = 10;
             tcpListenerCount = 10;
-            Masterzone = "configserver";
+            Mainzone = "configserver";
             Port = 53;
             BindAddress = "Any";
             FordwardingEnabled = true;

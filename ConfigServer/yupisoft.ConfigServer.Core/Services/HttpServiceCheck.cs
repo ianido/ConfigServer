@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
@@ -12,15 +13,16 @@ namespace yupisoft.ConfigServer.Core.Services
 
         private object _lock = new object();
 
-        public HttpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig) : base(checkConfig, serviceConfig)
+        public HttpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, serviceConfig, logger)
         {
             _checkConfig = checkConfig;
             _checkConfig.Http = _checkConfig.Http.Replace("$address", serviceConfig.Address);
             _checkConfig.Http = _checkConfig.Http.Replace("$port", serviceConfig.Port.ToString());
         }
 
-        protected override void CheckAsync(int callid)
+        protected override void CheckAsync()
         {
+            //_logger.LogTrace("HttpServiceCheck: CheckAsync.");
             HttpClient client = new HttpClient();
             client.Timeout = Timeout;
             client.GetAsync(_checkConfig.Http).ContinueWith((a) =>
@@ -32,7 +34,7 @@ namespace yupisoft.ConfigServer.Core.Services
                     else
                         _lastCheckStatus = ServiceCheckStatus.Failing;
                     client.Dispose();
-                    OnCheckDone(Id, _lastCheckStatus, callid);
+                    OnCheckDone(Id, _lastCheckStatus);
                 }
             });
         }

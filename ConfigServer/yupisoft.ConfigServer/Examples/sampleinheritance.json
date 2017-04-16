@@ -19,27 +19,44 @@
       "field0": "value0X",
       "fieldB": "valueB"
     },
+    "hooks": {
+      "hook.change01": {
+        "$hook": "$datachange",
+        "Id": "h1",
+        "Description": "",
+        "node": "configuration.baseobject.field0",
+        "http": "http://localhost/datachange"
+      },
+      "hook.change02": {
+        "$hook": "$datachange",
+        "Id": "h2",
+        "Description": "",
+        "node": "configuration.baseobject.services",
+        "http": "http://localhost/datachange"
+      }
+    },
     "services": {
-      "srv01": {
-        "$service": "true",
-        "id": "srv01",
-        "name": "Service on 01",
+      "srv01.europa": {
+        "$service": "redis",
+        "Id": "r01",
+        "description": "Redis Server in Europa",
+        "geo": {
+          "region": "europe"
+        },
         "tags": [
           "primary"
         ],
         "address": "127.0.0.1",
         "port": 80,
-        "config": {
-          "field1": "value1"
-        },
         "checks": [
           {
             "id": "api",
             "name": "HTTP API on port 80",
             "http": "http://$address/health",
-            "interval": "10s",
+            "interval": "3s",
             "timeout": "1s",
             "tlsSkipVerify": "true",
+            "disabled": true,
             "notes": "HTTP response code: any 2xx code is considered passing, a 429 Too Many Requests is a warning, and anything else is a failure."
           },
           {
@@ -48,14 +65,59 @@
             "script": "/temp/check_mem.exe",
             "interval": "10s",
             "timeout": "1s",
+            "disabled": true,
             "notes": "Exit code 0 - Check is passing, Exit code 1 - Check is warning, Any other code - Check is failing"
           },
           {
             "id": "ssh",
             "name": "SSH TCP on port 80",
             "tcp": "$address:80",
+            "interval": "5s",
+            "timeout": "1s",
+            "disabled": true,
+            "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
+          }
+        ]
+      },
+      "srv01.america": {
+        "$service": "redis",
+        "Id": "r02",
+        "description": "Redis server in America",
+        "geo": {
+          "region": "america"
+        },
+        "tags": [
+          "primary"
+        ],
+        "address": "127.0.0.1",
+        "port": 80,
+        "checks": [
+          {
+            "id": "api",
+            "name": "HTTP API on port 80",
+            "http": "http://$address/health",
+            "interval": "3s",
+            "timeout": "1s",
+            "tlsSkipVerify": "true",
+            "disabled": true,
+            "notes": "HTTP response code: any 2xx code is considered passing, a 429 Too Many Requests is a warning, and anything else is a failure."
+          },
+          {
+            "id": "mem-util",
+            "name": "Memory utilization",
+            "script": "/temp/check_mem.exe",
             "interval": "10s",
-            "timeout": "9s",
+            "timeout": "1s",
+            "disabled": true,
+            "notes": "Exit code 0 - Check is passing, Exit code 1 - Check is warning, Any other code - Check is failing"
+          },
+          {
+            "id": "ssh",
+            "name": "SSH TCP on port 80",
+            "tcp": "$address:80",
+            "interval": "5s",
+            "timeout": "1s",
+            "disabled": true,
             "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
           }
         ]

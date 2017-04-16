@@ -12,9 +12,12 @@ using Microsoft.Extensions.Options;
 using yupisoft.ConfigServer.Core.Cluster;
 using yupisoft.ConfigServer.Core.Utils;
 using yupisoft.ConfigServer.Core.Services;
+using yupisoft.ConfigServer.Core.Hooks;
 
 namespace yupisoft.ConfigServer.Core
 {
+    public delegate void LoadTenantEventHandler(ConfigServerTenant tenant, JToken dataToken, bool startingUp);
+
     public class LoadDataResult
     {
         public string DataHash { get; set; }
@@ -45,6 +48,7 @@ namespace yupisoft.ConfigServer.Core
         public JToken ACLToken { get; private set; }
         public Dictionary<string, JToken> RawTokens { get; private set; }
         public Dictionary<string, Service> Services { get; private set; }
+        public Dictionary<string, Hook> Hooks { get; private set; }
 
         public string DataHash {
             get
@@ -58,6 +62,18 @@ namespace yupisoft.ConfigServer.Core
         }
         private ILogger _logger { get; set; }
         private ConfigServerServices _serviceManager { get; set; }
+
+        public event LoadTenantEventHandler StartLoadTenantData;
+        public event LoadTenantEventHandler EndLoadTenantData;
+
+        protected virtual void OnStartLoadTenantData(JToken dataToken, bool startingUp)
+        {
+            StartLoadTenantData?.Invoke(this, dataToken, startingUp);
+        }
+        protected virtual void OnEndLoadTenantData(JToken dataToken, bool startingUp)
+        {
+            EndLoadTenantData?.Invoke(this, dataToken, startingUp);
+        }
 
         public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger)
         {
@@ -98,20 +114,43 @@ namespace yupisoft.ConfigServer.Core
                 foreach (var s in services)
                 {
                     JServiceConfig service = s.Parent.Parent.ToObject<JServiceConfig>();
-                    Services.Add(service.Id, new Service(service));
+                    if (Services.ContainsKey(service.Id))
+                        _logger.LogError("Service Id:(" + service.Id + ") already exist; Service Name: " + service.Name);
+                    else
+                        Services.Add(service.Id, new Service(service, _logger));
                 }
             }
         }
 
-        public LoadDataResult Load(bool startingUp, string entityName)
+        private void DiscoverHooks(JToken token)
+        {
+            lock (token)
+            {
+                JToken[] hooks = token.SelectTokens("$..$hook").ToArray();
+                Hooks.Clear();
+                foreach (var s in hooks)
+                {
+                    JHookConfig hook = s.Parent.Parent.ToObject<JHookConfig>();
+                    if (Hooks.ContainsKey(hook.Id))
+                        _logger.LogError("Hook Id:(" + hook.Id + ") already exist.");
+                    else
+                        Hooks.Add(hook.Id, Hook.CreateHook(hook, _logger));
+                }
+            }
+        }
+
+        public LoadDataResult Load(bool startingUp)
         {
             List<EntityChanges> tchanges = new List<EntityChanges>();
             Store.Watcher.StopMonitoring();
             Store.Watcher.ClearWatcher();
+            OnStartLoadTenantData(Token, startingUp);
+
             Token = Store.Get(StartEntityName);
             if (!string.IsNullOrEmpty(ACLEntityName)) ACLToken = Store.GetRaw(ACLEntityName);
 
             DiscoverServices(Token);
+            DiscoverHooks(Token);
 
             var newRawTokens = new Dictionary<string, JToken>();
             if (startingUp)
@@ -136,7 +175,10 @@ namespace yupisoft.ConfigServer.Core
             }
             RawTokens.Clear();
             RawTokens = newRawTokens;
+
             Store.Watcher.StartMonitoring();
+            OnEndLoadTenantData(Token, startingUp);
+
             return new LoadDataResult() { Changes = tchanges.ToArray(), DataHash = this.DataHash };
         }
     }

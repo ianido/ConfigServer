@@ -4,49 +4,43 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace yupisoft.ConfigServer.Core.Services
 {
-    public delegate void AllCheckDoneEventHandler(Service service, ServiceCheckStatus status);
     public class Service
     {
         private object _sync1 = new object();
-        private object _sync2 = new object();
-        private ServiceCheckStatus _lastCheckStatus;
 
-        private void Sc_CheckDone(string CheckerId, ServiceCheckStatus status, int callid)
+        private ServiceCheckStatus _lastCheckStatus;
+        private ILogger _logger;
+
+        private void Sc_CheckDone(string CheckerId, ServiceCheckStatus status)
         {
-            ServiceCheckResult res = new ServiceCheckResult();
-            res.CallId = callid;
-            res.Result = status;
-            res.CheckerId = CheckerId;
             lock (_sync1)
             {
-                CheckResults.Add(res);
-                if (CheckResults.Count(e => e.CallId == callid) == Checks.Length)
-                {
-                    lock (_sync2)
-                    {
-                        _lastCheckStatus = ServiceCheckStatus.Nocheck;
-                        // Determine the result.
-                        if (CheckResults.Exists(e => e.CallId == callid && e.Result == ServiceCheckStatus.Passing))
-                            _lastCheckStatus = ServiceCheckStatus.Passing;
-                        if (CheckResults.Exists(e => e.CallId == callid && e.Result == ServiceCheckStatus.Warning))
-                            _lastCheckStatus = ServiceCheckStatus.Warning;
-                        if (CheckResults.Exists(e => e.CallId == callid && e.Result == ServiceCheckStatus.Failing))
-                            _lastCheckStatus = ServiceCheckStatus.Failing;
-                        OnAllChecksDone(this, _lastCheckStatus);
-                    }
-                }
+                _logger.LogTrace("Srv: " + this.Id + " Chk: " + CheckerId + " -> " + status.ToString());
+                ServiceCheckResult res = CheckResults.FirstOrDefault(c => c.CheckerId == CheckerId);
+                res.Result = status;
+
+                _lastCheckStatus = ServiceCheckStatus.InProgress;
+                // Determine the result.
+                if (CheckResults.Exists(e => e.Result == ServiceCheckStatus.Passing))
+                    _lastCheckStatus = ServiceCheckStatus.Passing;
+                if (CheckResults.Exists(e => e.Result == ServiceCheckStatus.Warning))
+                    _lastCheckStatus = ServiceCheckStatus.Warning;
+                if (CheckResults.Exists(e => e.Result == ServiceCheckStatus.Failing))
+                    _lastCheckStatus = ServiceCheckStatus.Failing;
+
+                res.Result = ServiceCheckStatus.Iddle;
             }
         }
 
-        protected virtual void OnAllChecksDone(Service service, ServiceCheckStatus status)
+        private void Sc_CheckStarted(string checkerId)
         {
-            AllChecksDone?.Invoke(service, status);
+           var checkResult = CheckResults.FirstOrDefault(c => c.CheckerId == checkerId);
+           if (checkResult != null) checkResult.Result = ServiceCheckStatus.InProgress;
         }
-
-        public event AllCheckDoneEventHandler AllChecksDone;
 
         public ServiceCheckStatus LastCheckStatus { get => _lastCheckStatus; }
         public string Id { get { return Config.Id; } }
@@ -58,29 +52,40 @@ namespace yupisoft.ConfigServer.Core.Services
         public ServiceCheck[] Checks { get; set; }
         public List<ServiceCheckResult> CheckResults { get; set; }
 
-        public int Check()
+        private Random rnd = new Random(DateTime.Now.Millisecond);
+
+        public void Check()
         {
-            Random rnd = new Random(DateTime.Now.Millisecond);
-            int callid = rnd.Next(100000);
-            foreach (var check in Checks)
-            {
-                check.Check(callid);
+            lock (_sync1)
+            {                
+                foreach (var check in Checks)
+                {
+                    var cresult = CheckResults.FirstOrDefault(c => c.CheckerId == check.Id);
+                    if (cresult != null && cresult.Result == ServiceCheckStatus.Iddle) check.Check();
+                }
             }
-            return callid;
         }
-        public Service(JServiceConfig config)
+        public Service(JServiceConfig config, ILogger logger)
         {
+            _logger = logger;
             Config = config;
             List<ServiceCheck> lchecks = new List<ServiceCheck>();
+            CheckResults = new List<ServiceCheckResult>();
             foreach (var check in config.Checks)
             {
-                var sc = ServiceCheck.CreateFromConfig(check, config);
+                if (check.Disabled) continue;
+                var sc = ServiceCheck.CreateFromConfig(check, config, logger);
                 sc.CheckDone += Sc_CheckDone;
+                sc.CheckStarted += Sc_CheckStarted;
                 lchecks.Add(sc);
+                ServiceCheckResult res = new ServiceCheckResult();
+                res.Result = ServiceCheckStatus.Iddle;
+                res.CheckerId = check.Id;
+                CheckResults.Add(res);
             }
-            Checks = lchecks.ToArray();
-            CheckResults = new List<ServiceCheckResult>();
+            Checks = lchecks.ToArray();           
         }
+
 
     }
 }

@@ -1,4 +1,5 @@
-﻿using ARSoft.Tools.Net.Dns;
+﻿using ARSoft.Tools.Net;
+using ARSoft.Tools.Net.Dns;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -29,7 +30,7 @@ namespace yupisoft.ConfigServer.Core.Services
             {
                 try
                 {
-                    _logger.LogInformation("Starting DNS Server on Port:" + _config.Port + " Masterzone: " + _config.Masterzone + " Bound to Interface :" + _config.BindAddress);
+                    _logger.LogInformation("Starting DNS Server on Port:" + _config.Port + " Masterzone: " + _config.Mainzone + " Bound to Interface :" + _config.BindAddress);
                     IPAddress addr = IPAddress.Any;
                     if (_config.BindAddress.ToLower() != "any") addr = IPAddress.Parse(_config.BindAddress);
                     IPEndPoint endpoint = new IPEndPoint(addr, _config.Port);
@@ -56,24 +57,55 @@ namespace yupisoft.ConfigServer.Core.Services
         }
 
 
-        private Task Server_QueryReceived(object sender, QueryReceivedEventArgs eventArgs)
+        private async Task Server_QueryReceived(object sender, QueryReceivedEventArgs eventArgs)
         {
-            foreach (var tenant in _tenants.Tenants)
-            {
-                if (tenant.EnableServiceDiscovery)
-                {
-                    foreach (var service in tenant.Services)
-                    {
+            DnsMessage message = eventArgs.Query as DnsMessage;
+            if (message == null)
+                return;
+            DnsMessage response = message.CreateResponseInstance();
 
+            if ((message.Questions.Count == 1))
+            {
+                // send query to upstream server
+                DnsQuestion question = message.Questions[0];
+                if (question.Name.IsSubDomainOf(DomainName.Parse(_config.Mainzone.Trim('.'))))
+                {
+                    foreach (var tenant in _tenants.Tenants)
+                    {
+                        if (tenant.EnableServiceDiscovery)
+                        {
+                            foreach (var service in tenant.Services)
+                            {
+
+                            }
+                        }
                     }
                 }
+                else
+                    if (_config.FordwardingEnabled)
+                    {
+                        DnsMessage upstreamResponse = await DnsClient.Default.ResolveAsync(question.Name, question.RecordType, question.RecordClass);
+
+                        // if got an answer, copy it to the message sent to the client
+                        if (upstreamResponse != null)
+                        {
+                            foreach (DnsRecordBase record in (upstreamResponse.AnswerRecords))
+                                response.AnswerRecords.Add(record);
+
+                            foreach (DnsRecordBase record in (upstreamResponse.AdditionalRecords))
+                                response.AdditionalRecords.Add(record);
+
+                            response.ReturnCode = ReturnCode.NoError;
+                            eventArgs.Response = response;
+                        }
+
+                    }
             }
-            throw new NotImplementedException();
         }
 
-        private Task Server_ClientConnected(object sender, ClientConnectedEventArgs eventArgs)
+        private async Task Server_ClientConnected(object sender, ClientConnectedEventArgs eventArgs)
         {
-            throw new NotImplementedException();
+            return;
         }
     }
 }

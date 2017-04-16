@@ -14,17 +14,20 @@ namespace yupisoft.ConfigServer.Core
         public bool Enabled { get; set; }
         public bool HeartBeat { get; set; }
         public string Address { get; set; }
+        public string WANAddress { get; set; }
         public string Mode { get; set; }
+        
         public void CopyFrom(NodeConfigSection node)
         {
             this.Enabled = node.Enabled;
             this.Mode = node.Mode;
             this.Address = node.Address;
+            this.WANAddress = node.WANAddress;
         }
         public string Serialize() {
             if (string.IsNullOrEmpty(Mode)) Mode = "server";
             if (Mode!="server" && Mode != "client") Mode = "server";
-            return Id.ToString() + "|" + (Enabled ? "1" : "0") + "|" + Address + "|" + Mode[0]+ "|" + (HeartBeat ? "1" : "0");
+            return Id.ToString() + "|" + (Enabled ? "1" : "0") + "|" + Address + "|" + WANAddress + "|" + Mode[0]+ "|" + (HeartBeat ? "1" : "0");
         }
         public static NodeConfigSection Deserialize(string serialized)
         {
@@ -35,9 +38,10 @@ namespace yupisoft.ConfigServer.Core
             node.Id = parts[0];
             node.Enabled = parts[1] == "1" ? true : false;
             node.Address = parts[2];
-            if (parts[3] == "s") node.Mode = "server";
-            if (parts[3] == "c") node.Mode = "client";
-            node.HeartBeat = parts[4] == "1" ? true : false;
+            node.WANAddress = parts[3];
+            if (parts[4] == "s") node.Mode = "server";
+            if (parts[4] == "c") node.Mode = "client";
+            node.HeartBeat = parts[5] == "1" ? true : false;
             return node;
         }
         public NodeConfigSection()
@@ -46,6 +50,7 @@ namespace yupisoft.ConfigServer.Core
             Enabled = false;
             HeartBeat = true;
             Address = "";
+            WANAddress = "";
         }
     }
 

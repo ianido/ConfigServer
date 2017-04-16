@@ -10,5 +10,7 @@ namespace yupisoft.ConfigServer.Core.Services
         Warning,
         Failing,
         Nocheck,
+        InProgress,
+        Iddle,
     }
 }

@@ -11,11 +11,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
     {
         public List<LogMessage> LogMessages { get; set; }
 
-        public SelfNode() : base()
+        public SelfNode(NodeConfigSection config) : base(config)
         {
             LogMessages = new List<LogMessage>();
             Self = true;
             Life = 2;
+            Active = true;
         }
 
         public long LastLogId {

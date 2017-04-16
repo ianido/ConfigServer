@@ -15,6 +15,7 @@ namespace yupisoft.ConfigServer.Core
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public bool Disabled { get; set; }
         public string Http { get; set; }
         public string Tcp { get; set; }
         public string Script { get; set; }
@@ -22,6 +23,7 @@ namespace yupisoft.ConfigServer.Core
         public string Interval { get; set; }
         public string Timeout { get; set; }
         public string Notes { get; set; }
+        public string TTL { get; set; }
 
         public JServiceCheckType CheckType
         {
@@ -33,6 +35,13 @@ namespace yupisoft.ConfigServer.Core
                     return JServiceCheckType.Script;
                 return JServiceCheckType.Http;
             }
-        }      
+        }
+
+        public JServiceCheckConfig()
+        {
+            TTL = "30m";
+            Interval = "10s";
+            Timeout = "4s";
+        }
     }
 }

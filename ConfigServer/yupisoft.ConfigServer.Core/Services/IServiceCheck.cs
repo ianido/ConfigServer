@@ -7,6 +7,6 @@ namespace yupisoft.ConfigServer.Core.Services
     public interface IServiceCheck
     {
         ServiceCheckStatus LastCheckStatus { get; }
-        void Check(int callid);
+        void Check();
     }
 }

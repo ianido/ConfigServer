@@ -15,7 +15,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                        Client nodes do not receive heartbeats from server nodes.*/
         }
         private bool _inuse = false;
-        public NodeConfigSection NodeConfig { get; set; }
+        public NodeConfigSection NodeConfig { get; private set; }
         public bool Active { get; set; }
         public int SkipAttempts { get; set; }
         public int Attempts { get; set; }
@@ -38,8 +38,9 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public int Priority { get; set; }
         public int InUseCycles { get; set; }
         public int InUseMaxCycles { get; set; }
-        public string Id { get; set; }
-        public string Address { get; set; }
+        public string Id { get { return NodeConfig.Id; } }
+        public string Address { get { return NodeConfig.Address; } }
+        public string WANAddress { get { return NodeConfig.WANAddress; } }
         public bool Self { get; set; }
         public NodeMode Mode
         {
@@ -54,8 +55,9 @@ namespace yupisoft.ConfigServer.Core.Cluster
         {
             Life = 2000;
         }
-        public Node()
+        public Node(NodeConfigSection config)
         {
+            NodeConfig = config;
             InUseMaxCycles = 20;
             Life = 2000;
             Priority = 9999;

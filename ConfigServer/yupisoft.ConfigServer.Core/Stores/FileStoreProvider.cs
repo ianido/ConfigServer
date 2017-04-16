@@ -16,7 +16,7 @@ namespace yupisoft.ConfigServer.Core.Stores
     {
         private IConfigWatcher _watcher;
         private ILogger _logger;
-        private string FILEDATEFORMAT = "yyyy-MM-dd-hh-mm-ss";
+        private string FILEDATEFORMAT = "yyyy-MM-dd-hh-mm-ss-fff";
         private string _entityName;
         private string _aclName;
         private object _lock = new object();

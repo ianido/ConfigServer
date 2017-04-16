@@ -11,28 +11,20 @@ using yupisoft.ConfigServer.Core.Services;
 
 namespace yupisoft.ConfigServer.Core
 {
-    public class ConfigServerServices 
+    public class ConfigServerHooks 
     {
         private static object _lock = new object();
         private ILogger _logger;
         private Timer _timer;
         private ConfigServerTenants _tenants;
-        private ServiceDiscoveryConfigSection _sdConfig;
-        private IServiceDiscovery[] servers;
         private bool _Monitoring = false;
 
-        public ConfigServerServices(IOptions<ServiceDiscoveryConfigSection> sdConfig, ILogger<ConfigServerServices> logger, ConfigServerTenants tenants)
+        public ConfigServerHooks(ILogger<ConfigServerHooks> logger, ConfigServerTenants tenants)
         {
             _logger = logger;
             _tenants = tenants;
-            _sdConfig = sdConfig.Value;
             _timer = new Timer(new TimerCallback(Timer_Elapsed), tenants, Timeout.Infinite, 1000);
-            _logger.LogInformation("Created ConfigServerServices with " + tenants.Tenants.Count + " tenants.");
-
-            //Create Service Discovery Engines
-            List<IServiceDiscovery> serv = new List<IServiceDiscovery>();
-            serv.Add(new DNSServer(_sdConfig.DNS, _logger, _tenants));
-            servers = serv.ToArray();
+            _logger.LogInformation("Created ConfigServerHooks with " + tenants.Tenants.Count + " tenants.");
         }
 
         public void StopMonitoring()
@@ -52,23 +44,7 @@ namespace yupisoft.ConfigServer.Core
                 _timer.Change(1000, 1000);
             }
         }
-
-        public void StartServiceDiscovery()
-        {
-            foreach(var sd in servers)
-            {
-                sd.AttemptStart();
-            }
-        }
-
-        public void StopServiceDiscovery()
-        {
-            foreach (var sd in servers)
-            {
-                sd.AttemptStop();
-            }
-        }
-
+        
         private void Timer_Elapsed(object state)
         {
             lock (_lock)
@@ -77,9 +53,9 @@ namespace yupisoft.ConfigServer.Core
                 {
                     foreach (var tenant in _tenants.Tenants)
                     {
-                        foreach (var service in tenant.Services)
+                        foreach (var hook in tenant.Hooks)
                         {
-                            service.Value.Check();
+                            hook.Value.Check();
                         }
                     }
                 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -13,7 +14,7 @@ namespace yupisoft.ConfigServer.Core.Services
         
         private object _lock = new object();
 
-        public TcpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig) : base(checkConfig, serviceConfig)
+        public TcpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, serviceConfig, logger)
         {
             _checkConfig = checkConfig;
             _checkConfig.Tcp = _checkConfig.Tcp.Replace("$address", serviceConfig.Address);
@@ -21,8 +22,9 @@ namespace yupisoft.ConfigServer.Core.Services
         }
 
 
-        protected override void CheckAsync(int callid)
+        protected override void CheckAsync()
         {
+            //_logger.LogTrace("TcpServiceCheck: CheckAsync.");
             TcpClient client = new TcpClient();
             var addr = _checkConfig.Tcp.Split(':');
             if (addr.Length < 2) throw new Exception("Tcp address needs a port.");
@@ -35,7 +37,7 @@ namespace yupisoft.ConfigServer.Core.Services
                     else
                         _lastCheckStatus = ServiceCheckStatus.Failing;
                     client?.Dispose();
-                    OnCheckDone(Id, _lastCheckStatus, callid);
+                    OnCheckDone(Id, _lastCheckStatus);
                 }
             }).WithTimeout(Timeout);
         }
