@@ -17,10 +17,13 @@ namespace yupisoft.ConfigServer.Core
         public static IServiceCollection AddConfigServer(this IServiceCollection services, IConfiguration configuration, IHostingEnvironment hostingEnvironment)
         {
             var mainSection = configuration.GetSection("ConfigServer");
+            var datacenterSection = configuration.GetSection("ConfigServer:Datacenter");
             var clusterSection = configuration.GetSection("ConfigServer:Cluster");
             var securitySection = configuration.GetSection("ConfigServer:Cluster:Security");
             var sdSection = configuration.GetSection("ConfigServer:ServiceDiscovery");
 
+            
+            services.Configure<DatacenterConfigSection>(datacenterSection);
             services.Configure<TenantsConfigSection>(mainSection);
             services.Configure<ClusterConfigSection>(clusterSection);
             services.Configure<HmacAuthenticationOptions>(securitySection);
@@ -32,6 +35,7 @@ namespace yupisoft.ConfigServer.Core
             services.AddSingleton<ConfigServerTenants>();
             services.AddSingleton<ConfigServerManager>();
             services.AddSingleton<ConfigServerServices>();
+            services.AddSingleton<ConfigServerHooks>();
             services.AddSingleton<ConfigurationChanger>(imp => new ConfigurationChanger(Path.Combine(hostingEnvironment.ContentRootPath, "appsettings.json")));
             services.AddSingleton<ClusterManager>(); 
 

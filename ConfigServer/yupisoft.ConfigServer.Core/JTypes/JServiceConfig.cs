@@ -10,8 +10,8 @@ namespace yupisoft.ConfigServer.Core
         [JsonProperty(PropertyName = "$service")]
         public string Name { get; set; }
         public string Description { get; set; }
-        public JServiceGeoConfig Geo { get; set; }
         public string Address { get; set; }
+        public string Balancer { get; set; }
         public int Port { get; set; }
         public string[] Tags { get; set; }
         public dynamic Config { get; set; }
@@ -21,6 +21,7 @@ namespace yupisoft.ConfigServer.Core
         {
             Checks = new JServiceCheckConfig[0];
             Tags = new string[0];
+            Balancer = "default";
         }
 
     }

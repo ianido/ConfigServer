@@ -31,7 +31,7 @@
         "$hook": "$datachange",
         "Id": "h2",
         "Description": "",
-        "node": "configuration.baseobject.services",
+        "node": "configuration.services",
         "http": "http://localhost/datachange"
       }
     },
@@ -40,11 +40,9 @@
         "$service": "redis",
         "Id": "r01",
         "description": "Redis Server in Europa",
-        "geo": {
-          "region": "europe"
-        },
+        "balancer": "random",
         "tags": [
-          "primary"
+          "primary","geo-region-europe"
         ],
         "address": "127.0.0.1",
         "port": 80,
@@ -83,11 +81,8 @@
         "$service": "redis",
         "Id": "r02",
         "description": "Redis server in America",
-        "geo": {
-          "region": "america"
-        },
         "tags": [
-          "primary"
+          "primary","geo-region-america"
         ],
         "address": "127.0.0.1",
         "port": 80,
@@ -116,7 +111,7 @@
             "name": "SSH TCP on port 80",
             "tcp": "$address:80",
             "interval": "5s",
-            "timeout": "1s",
+            "timeout": "2s",
             "disabled": true,
             "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
           }

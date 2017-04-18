@@ -44,8 +44,8 @@ namespace yupisoft.ConfigServer
                 .UseStartup<Startup>()
                 .Build();
 
-            Core.Cluster.ClusterManager clsManager = (Core.Cluster.ClusterManager)Microsoft.Extensions.DependencyInjection.ActivatorUtilities.GetServiceOrCreateInstance(host.Services, typeof(Core.Cluster.ClusterManager));
-            clsManager.StartManaging();
+            Core.ConfigServerManager confManager = (Core.ConfigServerManager)Microsoft.Extensions.DependencyInjection.ActivatorUtilities.GetServiceOrCreateInstance(host.Services, typeof(Core.ConfigServerManager));
+            confManager.StartServer();
 
 
 

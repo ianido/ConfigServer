@@ -58,6 +58,8 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         public IConfigWatcher Watcher { get { return _watcher; } }
 
+        public ConfigServerTenant Tenant { get; private set; }
+
         public string MongoConnection { get; private set; }
 
         public string MongoDatabase { get; private set; }
@@ -93,8 +95,9 @@ namespace yupisoft.ConfigServer.Core.Stores
         /// 
         /// </summary>
         /// <param name="connectionString">the connection String to the mongo DB Server|database: "mongodb://localhost:27017|EmployeeDB"</param>
-        public MongoStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger)
+        public MongoStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger, ConfigServerTenant tenant)
         {
+            Tenant = tenant;
             string[] connectionStringParts = config.Connection.Split('|');
             if (connectionStringParts.Length < 2) throw new Exception("Incorrect Connection String");
             MongoConnection = connectionStringParts[0];
@@ -108,7 +111,7 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         private void _watcher_Change(object sender, string fileName)
         {
-            Change(this, fileName);
+            Change(Tenant, this, fileName);
         }
 
         public void Set(JToken node, string entityName)

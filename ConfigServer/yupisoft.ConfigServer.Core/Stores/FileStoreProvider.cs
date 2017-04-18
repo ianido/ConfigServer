@@ -23,6 +23,7 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         public event StoreChanged Change;
 
+        public ConfigServerTenant Tenant { get; private set; }
         public string FilePath { get; private set; }
 
         public string StartEntityName
@@ -50,8 +51,9 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         public IConfigWatcher Watcher { get{ return _watcher; } }
 
-        public FileStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger)
+        public FileStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger, ConfigServerTenant tenant)
         {
+            Tenant = tenant;
             FilePath = config.Connection;
             _entityName = config.StartEntityName.Replace("/","\\");
             _aclName = config.ACLEntityName?.Replace("/", "\\");
@@ -62,7 +64,7 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         private void _watcher_Change(object sender, string fileName)
         {
-            Change(this, fileName);
+            Change(Tenant, this, fileName);
         }
 
         private string GetContent(string entityName)

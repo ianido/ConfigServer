@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace yupisoft.ConfigServer.Core
 {
-    public delegate void StoreChanged(IStoreProvider sender, string entityName);
+    public delegate void StoreChanged(ConfigServerTenant tenant, IStoreProvider sender, string entityName);
     public interface IStoreProvider 
     {
         IConfigWatcher Watcher { get; }
+        ConfigServerTenant Tenant { get; }
         event StoreChanged Change;
         string StartEntityName { get; }
         string ACLEntityName { get; }

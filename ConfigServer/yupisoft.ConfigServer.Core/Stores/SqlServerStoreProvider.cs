@@ -20,6 +20,8 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         public event StoreChanged Change;
 
+        public ConfigServerTenant Tenant { get; private set; }
+
         public string ConnectionString { get; private set; }
 
         public IConfigWatcher Watcher { get { return _watcher; } }
@@ -58,8 +60,9 @@ namespace yupisoft.ConfigServer.Core.Stores
             }
         }
 
-        public SqlServerStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger)
+        public SqlServerStoreProvider(StoreConfigSection config, IConfigWatcher watcher, ILogger logger, ConfigServerTenant tenant)
         {
+            Tenant = tenant;
             ConnectionString = config.Connection;
             StartEntityName = config.StartEntityName;
             ACLEntityName = config.ACLEntityName;
@@ -70,7 +73,7 @@ namespace yupisoft.ConfigServer.Core.Stores
 
         private void _watcher_Change(object sender, string fileName)
         {
-            Change(this, fileName);
+            Change(Tenant, this, fileName);
         }
 
         /// <summary>

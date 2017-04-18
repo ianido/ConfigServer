@@ -40,6 +40,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
             }
         }
         protected JHookConfig Config { get; private set; }
+        protected ConfigServerTenant _Tenant { get; private set; }
 
         protected virtual void OnCheckDone(HookCheckStatus status)
         {
@@ -50,15 +51,16 @@ namespace yupisoft.ConfigServer.Core.Hooks
             CheckStarted?.Invoke();
         }
 
-        protected Hook(JHookConfig config, ILogger logger)
+        protected Hook(JHookConfig config, ILogger logger, ConfigServerTenant tenant)
         {
+            _Tenant = tenant;
             _logger = logger;
             Config = config;
         }
 
-        public static Hook CreateHook(JHookConfig config, ILogger logger)
-        {
-            if (config.HookType == JHookCheckType.DataNodeChange) return new HookDataNodeChange(config, logger);
+        public static Hook CreateHook(JHookConfig config, ILogger logger, ConfigServerTenant tenant)
+        {            
+            if (config.HookType == JHookCheckType.DataNodeChange) return new HookDataNodeChange(config, logger, tenant);
             throw new Exception("Cant create a check type.");
         }
 
@@ -68,6 +70,10 @@ namespace yupisoft.ConfigServer.Core.Hooks
         {
             if ((DateTime.UtcNow - _lastChecked) > Interval) { OnCheckStarted();  _lastChecked = DateTime.UtcNow; _lastCheckStatus = await CheckAsync(); }
         }
-        
+
+        public void UpdateFrom(JHookConfig config)
+        {
+            Config = config;
+        }
     }
 }

@@ -30,6 +30,7 @@ namespace yupisoft.ConfigServer.Core
     }
     public class ConfigServerTenant
     {
+        private object _lock = new object();
         public TenantConfigSection TenantConfig { get; private set; }
         public IStoreProvider Store { get; }
         public string Id { get { return TenantConfig.Id; } }
@@ -80,6 +81,7 @@ namespace yupisoft.ConfigServer.Core
             _logger = logger;
             RawTokens = new Dictionary<string, JToken>();
             Services = new Dictionary<string, Service>();
+            Hooks = new Dictionary<string, Hook>();
             TenantConfig = tenantConfig;
 
             switch (tenantConfig.Store.Provider)
@@ -89,17 +91,17 @@ namespace yupisoft.ConfigServer.Core
                     {
                         if (tenantConfig.Store.Connection.Contains("$ContentRoot") && env != null)
                             tenantConfig.Store.Connection = tenantConfig.Store.Connection.Replace("$ContentRoot", env.ContentRootPath);
-                        Store = new FileStoreProvider(tenantConfig.Store, new ConfigWatcher<FileWatcherProvider>(logger), logger);
+                        Store = new FileStoreProvider(tenantConfig.Store, new ConfigWatcher<FileWatcherProvider>(logger), logger, this);
                     }
                     break;
                 case "SqlServerStoreProvider":
                     {
-                        Store = new SqlServerStoreProvider(tenantConfig.Store, new ConfigWatcher<SqlServerWatcherProvider>(logger), logger);
+                        Store = new SqlServerStoreProvider(tenantConfig.Store, new ConfigWatcher<SqlServerWatcherProvider>(logger), logger, this);
                     }
                     break;
                 case "MongoStoreProvider":
                     {
-                        Store = new MongoStoreProvider(tenantConfig.Store, new ConfigWatcher<MongoWatcherProvider>(logger), logger);
+                        Store = new MongoStoreProvider(tenantConfig.Store, new ConfigWatcher<MongoWatcherProvider>(logger), logger, this);
                     }
                     break;
             }
@@ -117,8 +119,12 @@ namespace yupisoft.ConfigServer.Core
                     if (Services.ContainsKey(service.Id))
                         _logger.LogError("Service Id:(" + service.Id + ") already exist; Service Name: " + service.Name);
                     else
+                    {
                         Services.Add(service.Id, new Service(service, _logger));
+                        _logger.LogTrace("Registering Service " + service.Name + "(" + service.Id + ")");
+                    }
                 }
+
             }
         }
 
@@ -127,14 +133,36 @@ namespace yupisoft.ConfigServer.Core
             lock (token)
             {
                 JToken[] hooks = token.SelectTokens("$..$hook").ToArray();
-                Hooks.Clear();
+                
+                List<JHookConfig> jhooks = new List<JHookConfig>();
+
                 foreach (var s in hooks)
-                {
+                {                    
                     JHookConfig hook = s.Parent.Parent.ToObject<JHookConfig>();
+                    jhooks.Add(hook);
                     if (Hooks.ContainsKey(hook.Id))
-                        _logger.LogError("Hook Id:(" + hook.Id + ") already exist.");
+                    {
+                        Hooks[hook.Id].UpdateFrom(hook);
+                        //_logger.LogError("Hook Id:(" + hook.Id + ") already exist.");
+                    }
                     else
-                        Hooks.Add(hook.Id, Hook.CreateHook(hook, _logger));
+                    {
+                        Hooks.Add(hook.Id, Hook.CreateHook(hook, _logger, this));
+                        _logger.LogTrace("Registering Hook " + hook.HookType + "(" + hook.Id + ")");
+                    }
+                }
+
+                List<string> toDelete = new List<string>();
+
+                foreach (var s in Hooks)
+                {
+                    bool exist = jhooks.Any(t => t.Id == s.Key);
+                    if (!exist) toDelete.Add(s.Key);
+                }
+
+                foreach (var hookId in toDelete)
+                {
+                    Hooks.Remove(hookId);
                 }
             }
         }
@@ -181,21 +209,166 @@ namespace yupisoft.ConfigServer.Core
 
             return new LoadDataResult() { Changes = tchanges.ToArray(), DataHash = this.DataHash };
         }
+
+        public JNode GetRaw(string path, string entityName)
+        {
+            if (Token == null) throw new Exception("Tenant: " + Id + " not loaded.");
+            lock (_lock)
+            {
+                if (entityName == "@default") entityName = Store.StartEntityName;
+                JToken selToken = RawTokens[entityName].SelectToken(path);
+                if (selToken == null) return new JNode(path, "{}", entityName);
+                var result = selToken.ToObject<JToken>();
+                return new JNode(path, result, entityName);
+            }
+        }
+
+        public T Get<T>(string path)
+        {
+            if (Token == null) throw new Exception("Tenant: " + Id + " not loaded.");
+
+            lock (_lock)
+            {
+                JToken selToken = Token.SelectToken(path);
+                if (selToken == null) return default(T);
+                var result = selToken.ToObject<T>();
+                return result;
+            }
+        }
+
+        public bool Set(JNode newToken, string tenantId, bool stopMonitoring)
+        {            
+            if (Token == null)
+            {
+                _logger.LogWarning("ApplyUpdate: Tenant: " + Id + " not loader.");
+                new Exception("ApplyUpdate: Tenant: " + Id + " not loaded.");
+            }
+
+            lock (_lock)
+            {
+                if (Store.Watcher.IsWatching(newToken.Entity))
+                {
+                    JToken rawToken = Store.GetRaw(newToken.Entity);
+                    JToken selToken = rawToken.SelectToken(newToken.Path);
+                    if (selToken == null) return false;
+                    if (selToken.Parent != null)
+                        selToken.Replace(newToken.Value);
+                    else
+                        rawToken = newToken.Value;
+                    if (stopMonitoring) Store.Watcher.StopMonitoring();
+                    Store.Set(rawToken, newToken.Entity);
+                    if (stopMonitoring)
+                    {
+                        var res = Load(false);
+                        if (res.Changes.Length > 0)
+                        {
+                            _logger.LogTrace("Applied Update: ");
+                            foreach (var c in res.Changes)
+                                _logger.LogTrace(c.diffToken?.ToString(Newtonsoft.Json.Formatting.Indented));
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogError("ApplyUpdate: Unauthorized Entity: " + newToken.Entity);
+                    throw new Exception("Unauthorized Entity: " + newToken.Entity);
+                }
+            }
+            return true;
+        }
     }
 
     public class ConfigServerTenants
     {
+        private object _lock = new object();
         public List<ConfigServerTenant> Tenants { get; set; }
+        public ILogger _logger { get; private set; }
 
         public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger)
         {
+            _logger = logger;
             Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t =>
             {
                 ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger);
                 return tenant;
             }).ToList();
+
+            _logger.LogTrace("Number of tenants: " + Tenants.Count + " tenants.");
+        }
+
+        private ConfigServerTenant GetTenant(string tenantId)
+        {
+            foreach (var tenant in Tenants)
+            {
+                if (tenant.TenantConfig.Id == tenantId)
+                    return tenant;
+            }
+            return null;
         }
 
 
+
+        public bool ApplyUpdate(List<LogMessage> logs, List<LogMessage> applyedlogs)
+        {
+            int TotalLogsApplied = 0;
+            var groupedTenant = logs.GroupBy(u => u.TenantId).ToList();
+
+            foreach (var groupT in groupedTenant)
+            {
+                string tenantId = groupT.Key;
+
+                if (tenantId == null)
+                {
+                    _logger.LogTrace("<Null> TenantId found.");
+                    continue;
+                }
+                ConfigServerTenant tenant = GetTenant(tenantId);
+                if (tenant == null) { _logger.LogError("ApplyUpdate: Tenant: " + tenantId + " not found."); continue; }
+                if (tenant.Token == null) { _logger.LogWarning("ApplyUpdate: Tenant: " + tenantId + " not loader."); continue; }
+                lock (_lock)
+                {
+                    tenant.Store.Watcher.StopMonitoring();
+                    var groupedEntities = groupT.GroupBy(u => u.Entity).ToList();
+                    foreach (var group in groupedEntities)
+                    {
+                        string entity = group.Key;
+                        if (!tenant.Store.Watcher.IsWatching(entity)) { _logger.LogError("ApplyUpdate: Unrecognized entity: " + entity + " for tanant: " + tenant); continue; }
+
+                        var groupSorted = group.OrderBy(g => g.LogId);
+
+                        foreach (var log in groupSorted)
+                        {
+                            if (string.IsNullOrEmpty(log.JsonDiff)) { continue; }
+                            JToken rawToken = tenant.Store.GetRaw(entity);
+                            applyedlogs.Add(log);
+
+                            if (log.Full)
+                            {
+                                tenant.Store.Set(JToken.Parse(log.JsonDiff), entity);
+                            }
+                            else
+                            {
+                                JToken patchToken = JToken.Parse(log.JsonDiff);
+                                var mJsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
+                                JToken result = mJsonDiff.Patch(rawToken, patchToken);
+                                tenant.Store.Set(result, entity);
+                            }
+                        }
+                    }
+
+                    var res = tenant.Load(false);
+                    TotalLogsApplied += res.Changes.Length;
+                    if (res.Changes.Length > 0)
+                    {
+                        _logger.LogTrace("Applied Update: ");
+                        foreach (var c in res.Changes)
+                            _logger.LogTrace(c.diffToken?.ToString(Newtonsoft.Json.Formatting.Indented));
+                    }
+
+                }
+            }
+            _logger.LogInformation("Applied " + TotalLogsApplied + " logs successfully.");
+            return TotalLogsApplied > 0;
+        }
     }
 }

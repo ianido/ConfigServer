@@ -7,6 +7,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using yupisoft.ConfigServer.Core.Cluster;
 using yupisoft.ConfigServer.Core.Services;
 
 namespace yupisoft.ConfigServer.Core
@@ -17,21 +18,23 @@ namespace yupisoft.ConfigServer.Core
         private ILogger _logger;
         private Timer _timer;
         private ConfigServerTenants _tenants;
+        private ClusterManager _clusterMan;
         private ServiceDiscoveryConfigSection _sdConfig;
         private IServiceDiscovery[] servers;
         private bool _Monitoring = false;
 
-        public ConfigServerServices(IOptions<ServiceDiscoveryConfigSection> sdConfig, ILogger<ConfigServerServices> logger, ConfigServerTenants tenants)
+        public ConfigServerServices(IOptions<ServiceDiscoveryConfigSection> sdConfig, ILogger<ConfigServerServices> logger, ConfigServerTenants tenants, ClusterManager clusterMan)
         {
             _logger = logger;
             _tenants = tenants;
+            _clusterMan = clusterMan;
             _sdConfig = sdConfig.Value;
             _timer = new Timer(new TimerCallback(Timer_Elapsed), tenants, Timeout.Infinite, 1000);
             _logger.LogInformation("Created ConfigServerServices with " + tenants.Tenants.Count + " tenants.");
 
             //Create Service Discovery Engines
             List<IServiceDiscovery> serv = new List<IServiceDiscovery>();
-            serv.Add(new DNSServer(_sdConfig.DNS, _logger, _tenants));
+            serv.Add(new DNSServer(_sdConfig.DNS, _logger, _tenants, _clusterMan));
             servers = serv.ToArray();
         }
 

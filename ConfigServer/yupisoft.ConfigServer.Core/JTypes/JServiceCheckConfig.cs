@@ -42,6 +42,7 @@ namespace yupisoft.ConfigServer.Core
             TTL = "30m";
             Interval = "10s";
             Timeout = "4s";
+            Disabled = false;
         }
     }
 }

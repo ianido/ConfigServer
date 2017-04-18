@@ -42,13 +42,52 @@ namespace yupisoft.ConfigServer.Core.Services
            if (checkResult != null) checkResult.Result = ServiceCheckStatus.InProgress;
         }
 
+        public bool? LastChoosed { get; set; } // Determine if this server was selected by the balancer.
         public ServiceCheckStatus LastCheckStatus { get => _lastCheckStatus; }
         public string Id { get { return Config.Id; } }
         public string Name { get { return Config.Name; } }
+        public ServiceBalancers Balancer {
+            get {
+                if (Config.Balancer.ToLower() == "random")
+                    return ServiceBalancers.Random;
+                else
+                if (Config.Balancer.ToLower() == "roundrobin")
+                    return ServiceBalancers.RoundRobin;
+                else
+                if (Config.Balancer.ToLower().StartsWith("performance"))
+                    return ServiceBalancers.Performance;
+                // Performance works by performance counters:
+                // the config specify the performance counter like: performance:srv_redis01_hitspersec
+                // In this case the counter: servicehitspersec will be evaluated and based on the value will determine 
+                // which server will choose.
+                return ServiceBalancers.Random;
+            }
+        }
         public string Address { get { return Config.Address; } }
         public int Port { get { return Config.Port; } }
         public string[] Tags { get { return Config.Tags; } }
         public JServiceConfig Config { get; private set; }
+        public JServiceGeoConfig Geo {
+            get
+            {
+                foreach (var t in Tags)
+                {
+                    if (t.StartsWith("geo-"))
+                    {
+                        string[] parts = t.Split('-');
+                        if (parts.Length == 3)
+                        {
+                            var geo = new JServiceGeoConfig();
+                            if (parts[1].ToLower() == "country") geo.Country = parts[2];
+                            if (parts[1].ToLower() == "region") geo.Region = parts[2];
+                            if (parts[1].ToLower() == "state") geo.State = parts[2];
+                            return geo;
+                        }
+                    }
+                }
+                return null;
+            }
+        }
         public ServiceCheck[] Checks { get; set; }
         public List<ServiceCheckResult> CheckResults { get; set; }
 
@@ -69,6 +108,7 @@ namespace yupisoft.ConfigServer.Core.Services
         {
             _logger = logger;
             Config = config;
+            LastChoosed = null;
             List<ServiceCheck> lchecks = new List<ServiceCheck>();
             CheckResults = new List<ServiceCheckResult>();
             foreach (var check in config.Checks)

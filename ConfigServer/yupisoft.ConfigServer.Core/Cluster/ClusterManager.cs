@@ -23,13 +23,32 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private Timer _timer;
         private ILogger _logger;
         private ConfigurationChanger _cfgChanger;
-        private ConfigServerManager _cfgServer;
+        private DatacenterConfigSection _datacenterConfig;
+        //private ConfigServerManager _cfgServer;
+        private ConfigServerTenants _tenantManager;
         private int _NodesMonitoringHeartbeat = 2000; // Milliseconds
         private int _NodesMonitoringMaxAttempts = 3;
         private int _NodesMonitoringSkipAttemptsOnFail = 3;
         private int _NodesMonitoringLife = 3;
         private HmacAuthenticationOptions _clusterSecurity;
         private List<Node> _nodes;
+        private DateTime _AliveSince;
+
+        public string DataCenterId
+        {
+            get
+            {
+                return _datacenterConfig.Id;
+            }
+        }
+
+        public Node[] Nodes
+        {
+            get {
+                lock (_nodes)  
+                    return _nodes.ToArray();
+            }
+        }
 
         private SelfNode selfNode
         {
@@ -42,13 +61,19 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 }
             }
         }
-        
 
-        public ClusterManager(IOptions<ClusterConfigSection> clusterConfig, ILogger<ClusterManager> logger, ConfigurationChanger cfgChanger, ConfigServerManager cfgServer)
+        public ConfigServerTenants TenantManager { get { return _tenantManager; } }
+
+        public ClusterManager(IOptions<DatacenterConfigSection> datacenterConfig, IOptions<ClusterConfigSection> clusterConfig, ILogger<ClusterManager> logger, ConfigurationChanger cfgChanger, ConfigServerTenants tenantManager)
         {
+            _AliveSince = DateTime.UtcNow;
             _cfgChanger = cfgChanger;
-            _cfgServer = cfgServer;
-            _cfgServer.DataChanged += _cfgServer_DataChanged;
+            _tenantManager = tenantManager;
+            _datacenterConfig = datacenterConfig;
+
+            foreach (var tenant in tenantManager.Tenants)
+                tenant.Store.Change += Store_Change;
+
             _logger = logger;
             _nodes = new List<Node>();
             _NodesMonitoringHeartbeat = clusterConfig.Value.Monitoring.Interval;
@@ -88,6 +113,24 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _logger.LogInformation("Created ClusterManager with " + _nodes.Count + " nodes.");
         }
 
+        private void Store_Change(ConfigServerTenant tenant, IStoreProvider sender, string entityName)
+        {
+            var loadResult = tenant.Load(false);
+            if (loadResult.Changes.Length > 0)
+                foreach (var e in loadResult.Changes)
+                {
+                    _logger.LogInformation("Data changed Tenant: " + tenant.Id + " Entity: " + e.entity);
+                    _logger.LogTrace("Diff:" + e.diffToken?.ToString());
+
+                    LogMessage lm = new LogMessage() { Created = DateTime.UtcNow, Entity = e.entity, TenantId = tenant.Id, JsonDiff = e.diffToken?.ToString(Formatting.None) };
+                    lock (selfNode)
+                    {
+                        lm.LogId = (selfNode.LogMessages.Count > 0) ? (selfNode.LogMessages.Last().LogId + 1) : 1;
+                        selfNode.LogMessages.Add(lm);
+                    }
+                }
+        }
+
         private HeartBeatMessage CreateMessageFor(HeartBeartType type, HeartBeatMessage msg)
         {
             HeartBeatMessage message = new HeartBeatMessage();
@@ -100,8 +143,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
             message.LastLogDate = selfNode.LastLogDate;
             message.LastLogId = selfNode.LastLogId;
-            message.NodeAliveSince = _cfgServer.AliveSince;
-            message.DataHash = _cfgServer.TenantManager.Tenants.Select(p => new TenantHash() { Id = p.TenantConfig.Id, Hash = p.DataHash }).ToArray();
+            message.NodeAliveSince = _AliveSince;
+            message.DataHash = _tenantManager.Tenants.Select(p => new TenantHash() { Id = p.TenantConfig.Id, Hash = p.DataHash }).ToArray();
             if ((type == HeartBeartType.HeartBeatRequest) || (type == HeartBeartType.HeartBeatResponse) || (type == HeartBeartType.HeartBeatUpdateResponse) || (type == HeartBeartType.UpdateResponse))
             {
                 message.Nodes = _nodes.Select(n => n.NodeConfig.Serialize()).ToArray();
@@ -132,7 +175,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 mNode.CopyFrom(node);
                             else
                             {
-                                if (_cfgServer.AliveSince > msg.NodeAliveSince)
+                                if (_AliveSince > msg.NodeAliveSince)
                                 {
                                     node.CopyFrom(mNode);
                                     _cfgChanger.UpdateClusterNode(node);
@@ -173,7 +216,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     {
                         if (msg.DataHash.FirstOrDefault(e => e.Id == dh.Id).Hash != dh.Hash)
                         {
-                            ConfigServerTenant tenant = _cfgServer.TenantManager.Tenants.FirstOrDefault(t => t.Id == dh.Id);
+                            ConfigServerTenant tenant = _tenantManager.Tenants.FirstOrDefault(t => t.Id == dh.Id);
                             LogMessage lmsg = new LogMessage()
                             {
                                 Created = DateTime.UtcNow,
@@ -181,7 +224,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 Full = true,
                                 Entity = tenant.StartEntityName,
                                 TenantId = tenant.Id,
-                                JsonDiff = _cfgServer.GetRaw("", tenant.StartEntityName, tenant.Id).Value.ToString()
+                                JsonDiff = tenant.GetRaw("", tenant.StartEntityName).Value.ToString()
                             };
                             //selfNode.LogMessages.Add(lmsg);
                             message.Log.Add(lmsg);
@@ -203,7 +246,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 if (
                       (
                         (selfNode.LastLogId == msg.LastLogId) &&
-                        ((_cfgServer.AliveSince < msg.NodeAliveSince) || (selfNode.LastLogDate > msg.LastLogDate))
+                        ((_AliveSince < msg.NodeAliveSince) || (selfNode.LastLogDate > msg.LastLogDate))
                       )
                       || (msg.LastLogId < selfNode.LastLogId))
                 {
@@ -221,7 +264,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 node.Attempts = 0;
                 node.SkipAttempts = 0;
                 node.ResetLife();
-                _cfgServer.ApplyUpdate(msg.Log, selfNode.LogMessages);
+                _tenantManager.ApplyUpdate(msg.Log, selfNode.LogMessages);
             }
         }
 
@@ -341,7 +384,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
             if (msg.MessageType == HeartBeartType.UpdateRequest)
             {
-                _cfgServer.ApplyUpdate(msg.Log, selfNode.LogMessages);
+                _tenantManager.ApplyUpdate(msg.Log, selfNode.LogMessages);
 
                 var response = CreateMessageFor(HeartBeartType.UpdateResponse, msg);
                 return response;
@@ -352,7 +395,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 if (
                      (
                        (selfNode.LastLogId == msg.LastLogId) && 
-                       ((_cfgServer.AliveSince < msg.NodeAliveSince) || (selfNode.LastLogDate > msg.LastLogDate))
+                       ((_AliveSince < msg.NodeAliveSince) || (selfNode.LastLogDate > msg.LastLogDate))
                      )
                      || (msg.LastLogId < selfNode.LastLogId))
                 {
@@ -379,19 +422,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 var response = CreateMessageFor(HeartBeartType.Unknow, msg);
                 _logger.LogError("Unsupported Message: " + msg.MessageType + " received from " + msg.NodeId);
                 return response;
-            }
-        }
-
-        private void _cfgServer_DataChanged(string tenantId, string entity, JToken diffToken)
-        {
-            _logger.LogInformation("Data changed Tenant: " + tenantId + " Entity: " + entity);
-            _logger.LogTrace("Diff:" + diffToken?.ToString());
-
-            LogMessage lm = new LogMessage() {Created = DateTime.UtcNow, Entity = entity, TenantId = tenantId, JsonDiff = diffToken?.ToString(Formatting.None) };
-            lock (selfNode)
-            {                
-                lm.LogId = (selfNode.LogMessages.Count > 0) ? (selfNode.LogMessages.Last().LogId + 1) : 1;
-                selfNode.LogMessages.Add(lm);
             }
         }
 
