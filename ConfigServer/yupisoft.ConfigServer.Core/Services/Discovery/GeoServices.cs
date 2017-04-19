@@ -534,7 +534,7 @@ namespace yupisoft.ConfigServer.Core.Services
 
         public void SortByGeolocation(List<Service> discoverServices, List<Service> returnedServices, string clientAddr)
         {
-            clientAddr = "4.15.18.9";
+            
             Dictionary<Service, double> dictClosest = new Dictionary<Service, double>();
             if (!_memoryCache.TryGetValue("_geo_" + clientAddr, out GeoLocation clientLocation) || (clientLocation == null))
             {
