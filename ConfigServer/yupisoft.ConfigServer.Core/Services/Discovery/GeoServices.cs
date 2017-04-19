@@ -534,7 +534,7 @@ namespace yupisoft.ConfigServer.Core.Services
 
         public void SortByGeolocation(List<Service> discoverServices, List<Service> returnedServices, string clientAddr)
         {
-            
+            //clientAddr = "4.15.18.9";
             Dictionary<Service, double> dictClosest = new Dictionary<Service, double>();
             if (!_memoryCache.TryGetValue("_geo_" + clientAddr, out GeoLocation clientLocation) || (clientLocation == null))
             {
@@ -602,8 +602,25 @@ namespace yupisoft.ConfigServer.Core.Services
             }
             if (dictClosest.Count > 0)
             {
+                // Perform Random for GeoEquidistant nodes.
                 var servicesOrdered = dictClosest.OrderBy(e => e.Value).ToList();
-                returnedServices.AddRange(servicesOrdered.Select(s => s.Key));
+                var groupedbyOrder = servicesOrdered.GroupBy(g => g.Value).ToList();
+                
+                foreach(var g in groupedbyOrder)
+                {
+                    List<Service> returnedByGroup = new List<Service>();
+                    Random rnd = new Random(DateTime.UtcNow.Millisecond);
+                    var group = g.Select(s=>s.Key).ToList();
+                    while (group.Count != returnedByGroup.Count)
+                    {
+                        var next = rnd.Next(group.Count);
+                        if (returnedByGroup.Contains(group[next])) continue;
+                        group[next].LastChoosed = false;
+                        if (returnedServices.Count == 0) group[next].LastChoosed = true;
+                        returnedByGroup.Add(group[next]);
+                    }
+                    returnedServices.AddRange(returnedByGroup);
+                }
             }
         }
     }

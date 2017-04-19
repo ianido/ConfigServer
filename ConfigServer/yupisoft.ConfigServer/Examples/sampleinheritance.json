@@ -36,7 +36,7 @@
       }
     },
     "services": {
-      "srv01.europa": {
+      "srv01.europa1": {
         "$service": "redis",
         "Id": "r01",
         "description": "Redis Server in Europa",
@@ -78,9 +78,51 @@
           }
         ]
       },
-      "srv01.america": {
+      "srv01.europa2": {
         "$service": "redis",
         "Id": "r02",
+        "description": "Redis Server in Europa",
+        "balancer": "geo",
+        "tags": [
+          "primary",
+          "geo-pos"
+        ],
+        "address": "2.21.92.26",
+        "port": 80,
+        "checks": [
+          {
+            "id": "api",
+            "name": "HTTP API on port 80",
+            "http": "http://$address/health",
+            "interval": "3s",
+            "timeout": "1s",
+            "tlsSkipVerify": "true",
+            "disabled": true,
+            "notes": "HTTP response code: any 2xx code is considered passing, a 429 Too Many Requests is a warning, and anything else is a failure."
+          },
+          {
+            "id": "mem-util",
+            "name": "Memory utilization",
+            "script": "/temp/check_mem.exe",
+            "interval": "10s",
+            "timeout": "1s",
+            "disabled": true,
+            "notes": "Exit code 0 - Check is passing, Exit code 1 - Check is warning, Any other code - Check is failing"
+          },
+          {
+            "id": "ssh",
+            "name": "SSH TCP on port 80",
+            "tcp": "$address:80",
+            "interval": "5s",
+            "timeout": "1s",
+            "disabled": true,
+            "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
+          }
+        ]
+      },
+      "srv01.america": {
+        "$service": "redis",
+        "Id": "r03",
         "description": "Redis server in America",
         "tags": [
           "secondary",
