@@ -16,25 +16,28 @@ namespace yupisoft.ConfigServer.Core
         public string Uri { get; set; }
         public string WANUri { get; set; }
         public string Mode { get; set; }
-        
+        public string DataCenter { get; set; }
+
         public void CopyFrom(NodeConfigSection node)
         {
             this.Enabled = node.Enabled;
             this.Mode = node.Mode;
             this.Uri = node.Uri;
             this.WANUri = node.WANUri;
+            this.DataCenter = node.DataCenter;
+            this.HeartBeat = node.HeartBeat;
         }
         public string Serialize() {
             if (string.IsNullOrEmpty(Mode)) Mode = "server";
             if (Mode!="server" && Mode != "client") Mode = "server";
-            return Id.ToString() + "|" + (Enabled ? "1" : "0") + "|" + Uri + "|" + WANUri + "|" + Mode[0]+ "|" + (HeartBeat ? "1" : "0");
+            return Id.ToString() + "|" + (Enabled ? "1" : "0") + "|" + Uri + "|" + WANUri + "|" + Mode[0]+ "|" + (HeartBeat ? "1" : "0") + "|" + DataCenter;
         }
         public static NodeConfigSection Deserialize(string serialized)
         {
             NodeConfigSection node = new NodeConfigSection();
             if (string.IsNullOrEmpty(serialized)) return null;
             var parts = serialized.Split('|');
-            if (parts.Length < 5) return null;
+            if (parts.Length < 6) return null;
             node.Id = parts[0];
             node.Enabled = parts[1] == "1" ? true : false;
             node.Uri = parts[2];
@@ -42,6 +45,7 @@ namespace yupisoft.ConfigServer.Core
             if (parts[4] == "s") node.Mode = "server";
             if (parts[4] == "c") node.Mode = "client";
             node.HeartBeat = parts[5] == "1" ? true : false;
+            node.DataCenter = parts[6];
             return node;
         }
         public NodeConfigSection()
@@ -55,7 +59,9 @@ namespace yupisoft.ConfigServer.Core
     }
 
     public class ClusterConfigMonitoringSection
-    {        
+    {
+        public int DataCenterMaxInterval { get; set; }
+        public int DataCenterMinInterval { get; set; }
         public int Interval { get; set; }
         public int MaxAttempts { get; set; }
         public int SkipAttemptsOnFail { get; set; }

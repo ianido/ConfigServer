@@ -47,6 +47,13 @@ namespace yupisoft.ConfigServer.Core
             var jsonString = File.ReadAllText(_AppSettings);
             JToken jsonObject = JsonConvert.DeserializeObject<JToken>(jsonString);
             JArray arTokens = (JArray)jsonObject.SelectToken("ConfigServer.Nodes");
+            if (arTokens == null)
+            {
+                JContainer parent = (JContainer)jsonObject.SelectToken("ConfigServer");                
+                arTokens = new JArray();
+                var pr = new JProperty("Nodes", arTokens);
+                parent.Add(pr);
+            }
             if (arTokens != null)
             {
                 arTokens.Add(JToken.FromObject(node));

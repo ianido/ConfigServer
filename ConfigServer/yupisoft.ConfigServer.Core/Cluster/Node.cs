@@ -40,6 +40,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public int Priority { get; set; }
         public int InUseCycles { get; set; }
         public int InUseMaxCycles { get; set; }
+        public string DataCenter { get { return NodeConfig.DataCenter; } }
         public string Id { get { return NodeConfig.Id; } }
         public string Uri { get { return NodeConfig.Uri; } }
         public string WANUri { get { return NodeConfig.WANUri; } }

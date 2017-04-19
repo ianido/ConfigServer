@@ -20,19 +20,23 @@ namespace yupisoft.ConfigServer.Core.Cluster
     public class ClusterManager
     {
         private object _lock = new object();
-        private Timer _timer;
+        private Timer _heartbeatTimer;
+        private Timer _betweenDatacenterTimer;
         private ILogger _logger;
         private ConfigurationChanger _cfgChanger;
         private DatacenterConfigSection _datacenterConfig;
         private ClusterConfigSection _clusterConfig;
         private ConfigServerTenants _tenantManager;
         private int _NodesMonitoringHeartbeat = 2000; // Milliseconds
+        private int _DataCenterMaxIntervalHeartBeat = 2000; // Milliseconds    
+        private int _DataCenterMinIntervalHeartBeat = 2000; // Milliseconds
         private int _NodesMonitoringMaxAttempts = 3;
         private int _NodesMonitoringSkipAttemptsOnFail = 3;
         private int _NodesMonitoringLife = 3;
         private HmacAuthenticationOptions _clusterSecurity;
         private List<Node> _nodes;
         private DateTime _AliveSince;
+        private Random rndGenerator = new Random(DateTime.UtcNow.Millisecond);
         public ClusterNodeBalancers Balancer
         {
             get
@@ -96,6 +100,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
             _logger = logger;
             _nodes = new List<Node>();
+            _DataCenterMaxIntervalHeartBeat = _clusterConfig.Monitoring.DataCenterMaxInterval;
+            _DataCenterMinIntervalHeartBeat = _clusterConfig.Monitoring.DataCenterMinInterval;
             _NodesMonitoringHeartbeat = _clusterConfig.Monitoring.Interval;
             _NodesMonitoringMaxAttempts = _clusterConfig.Monitoring.MaxAttempts;
             _NodesMonitoringSkipAttemptsOnFail = _clusterConfig.Monitoring.SkipAttemptsOnFail;
@@ -105,6 +111,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             var nodesConfig = _clusterConfig.Nodes;
             foreach(var node in nodesConfig)
             {
+                if (string.IsNullOrEmpty(node.DataCenter)) node.DataCenter = DataCenterId;
                 if (node.Enabled)
                 {
                     Node newNode = null;
@@ -119,7 +126,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
             if (selfNode == null)
             {
-                var newNode = new SelfNode(new NodeConfigSection() { Id = clusterConfig.Value.OwnNodeName, Uri = clusterConfig.Value.OwnNodeUrl, Enabled = true }) ;
+                var newNode = new SelfNode(new NodeConfigSection() { Id = clusterConfig.Value.OwnNodeName, WANUri = clusterConfig.Value.OwnNodeUrl, Uri = clusterConfig.Value.OwnNodeUrl, Enabled = true, Mode = "server", DataCenter = DataCenterId, HeartBeat = true  });
                 _nodes.Add(newNode);
             }
 
@@ -129,7 +136,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 Environment.Exit(1);
             }
 
-            _timer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, _NodesMonitoringHeartbeat);
+            _betweenDatacenterTimer = new Timer(new TimerCallback(DataCenterTimer_Elapsed), _nodes, Timeout.Infinite, _DataCenterMaxIntervalHeartBeat);
+            _heartbeatTimer = new Timer(new TimerCallback(Timer_Elapsed), _nodes, Timeout.Infinite, _NodesMonitoringHeartbeat);
             _logger.LogInformation("Created ClusterManager with " + _nodes.Count + " nodes.");
         }
 
@@ -151,7 +159,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 }
         }
 
-        private HeartBeatMessage CreateMessageFor(HeartBeartType type, HeartBeatMessage msg)
+        private HeartBeatMessage CreateMessageFor(HeartBeartType type, HeartBeatMessage previousMsg)
         {
             HeartBeatMessage message = new HeartBeatMessage();
             message.Created = DateTime.UtcNow;
@@ -165,6 +173,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             message.LastLogId = selfNode.LastLogId;
             message.NodeAliveSince = _AliveSince;
             message.DataHash = _tenantManager.Tenants.Select(p => new TenantHash() { Id = p.TenantConfig.Id, Hash = p.DataHash }).ToArray();
+
             if ((type == HeartBeartType.HeartBeatRequest) || (type == HeartBeartType.HeartBeatResponse) || (type == HeartBeartType.HeartBeatUpdateResponse) || (type == HeartBeartType.UpdateResponse))
             {
                 message.Nodes = _nodes.Select(n => n.NodeConfig.Serialize()).ToArray();
@@ -174,7 +183,17 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 #region message.Nodes --> Determine Discovery Node Collection Diferences
                 // Check diferences, send only the diferences
                 var currentNodes = _nodes.Select(n => n.NodeConfig).ToArray();
-                var msgNodes = msg.Nodes.Select(n => NodeConfigSection.Deserialize(n)).ToList();
+                var msgNodes = previousMsg.Nodes.Select(n => NodeConfigSection.Deserialize(n)).ToList();
+                foreach (var node in msgNodes)
+                {
+                    var mNode = currentNodes.FirstOrDefault(n => n.Id == node.Id);
+                    if (mNode == null)
+                    {
+                        _nodes.Add(new Node(node));
+                        _cfgChanger.AddClusterNode(node);
+                    }
+                }
+
                 foreach (var node in currentNodes)
                 {
                     var mNode = msgNodes.FirstOrDefault(n => n.Id == node.Id);
@@ -195,7 +214,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                 mNode.CopyFrom(node);
                             else
                             {
-                                if (_AliveSince > msg.NodeAliveSince)
+                                if (_AliveSince > previousMsg.NodeAliveSince)
                                 {
                                     node.CopyFrom(mNode);
                                     _cfgChanger.UpdateClusterNode(node);
@@ -211,15 +230,15 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
                 bool DifferentDataHash = false;
                 foreach (var dh in message.DataHash)
-                    if (msg.DataHash.FirstOrDefault(e => e.Id == dh.Id).Hash != dh.Hash)
+                    if (previousMsg.DataHash.FirstOrDefault(e => e.Id == dh.Id).Hash != dh.Hash)
                     {
                         DifferentDataHash = true;
                         break;
                     }
                 
-                if (msg.LastLogId < selfNode.LastLogId)
+                if (previousMsg.LastLogId < selfNode.LastLogId)
                 {
-                    var logMessages = selfNode.LogMessages.Where(m => m.LogId > msg.LastLogId);
+                    var logMessages = selfNode.LogMessages.Where(m => m.LogId > previousMsg.LastLogId);
                     message.Log.AddRange(logMessages);
                     message.LastLogId = selfNode.LastLogId;
                     message.LastLogDate = selfNode.LastLogDate;
@@ -227,14 +246,14 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 else
                     if ( DifferentDataHash &&
                            ( 
-                            (selfNode.LastLogId == msg.LastLogId) 
-                             && ((message.NodeAliveSince < msg.NodeAliveSince) || (selfNode.LastLogDate > msg.LastLogDate))
+                            (selfNode.LastLogId == previousMsg.LastLogId) 
+                             && ((message.NodeAliveSince < previousMsg.NodeAliveSince) || (selfNode.LastLogDate > previousMsg.LastLogDate))
                            )
                        )
                 {
                     foreach (var dh in message.DataHash)
                     {
-                        if (msg.DataHash.FirstOrDefault(e => e.Id == dh.Id).Hash != dh.Hash)
+                        if (previousMsg.DataHash.FirstOrDefault(e => e.Id == dh.Id).Hash != dh.Hash)
                         {
                             ConfigServerTenant tenant = _tenantManager.Tenants.FirstOrDefault(t => t.Id == dh.Id);
                             LogMessage lmsg = new LogMessage()
@@ -294,7 +313,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             {
                 if (!node.Active) return;
                 if ((node.Self) || (node.InUse) || (node.Mode == Node.NodeMode.Client) || (!node.NodeConfig.HeartBeat)) return;
-                //if ((node.InUse) || (node.Mode == Node.NodeMode.Client)) return;
+
                 if (node.SkipAttempts > 0)
                 {
                     node.SkipAttempts--;
@@ -453,13 +472,19 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         private void Timer_Elapsed(object state)
         {
-            _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat); // Disable the timer;
+            _heartbeatTimer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat); // Disable the timer;
             if (selfNode.Mode == Node.NodeMode.Server)
             {
                 Node[] nodes = null;
                 lock (_nodes){nodes = _nodes.ToArray();}
                 foreach (var w in nodes)
                 {
+                    lock (w)
+                    {
+                        if (!w.Active) continue;
+                        if ((w.Self) || (w.InUse) || (w.Mode == Node.NodeMode.Client) || (!w.NodeConfig.HeartBeat)) continue;
+                        if (w.DataCenter != DataCenterId) continue; // Only hearthbeat this DC nodes.
+                    }
                     HeartBeatMessage req = null;
                     lock (selfNode)
                     {
@@ -472,22 +497,48 @@ namespace yupisoft.ConfigServer.Core.Cluster
             {
                 Node node = null;
                 lock (_nodes){
-                    node = _nodes.OrderByDescending(n => n.Priority).FirstOrDefault(n => !n.Self && n.Active && n.Mode == Node.NodeMode.Server);
+                    node = _nodes.OrderByDescending(n => n.Priority).FirstOrDefault(n => !n.Self && n.Active && n.Mode == Node.NodeMode.Server && n.NodeConfig.HeartBeat);
                 }
-                var req = CreateMessageFor(HeartBeartType.HeartBeatRequest, null);
-                SendHeartBeat(node, req);                
+                if (node != null)
+                {
+                    var req = CreateMessageFor(HeartBeartType.HeartBeatRequest, null);
+                    SendHeartBeat(node, req);
+                }              
             }
-            _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat); // Reenable the timer;
+            _heartbeatTimer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat); // Reenable the timer;
+        }
+
+        private void DataCenterTimer_Elapsed(object state)
+        {
+            _betweenDatacenterTimer.Change(Timeout.Infinite, _DataCenterMaxIntervalHeartBeat); // Disable the timer;
+            bool sendHearthBeat = rndGenerator.Next(10) > 5;
+
+            if (sendHearthBeat)
+            {
+                Node node = null;
+                lock (_nodes)
+                {
+                    node = _nodes.OrderByDescending(n => n.Priority).FirstOrDefault(n => !n.Self && n.Active && n.Mode == Node.NodeMode.Server && n.NodeConfig.HeartBeat && n.NodeConfig.DataCenter != DataCenterId);
+                }
+                if (node != null)
+                {
+                    var req = CreateMessageFor(HeartBeartType.HeartBeatRequest, null);
+                    SendHeartBeat(node, req);
+                }
+            }
+            _betweenDatacenterTimer.Change(rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat, rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat);
         }
 
         public void StartManaging()
         {
-            _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat);
+            _heartbeatTimer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat);
+            _betweenDatacenterTimer.Change(rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat, rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat);
         }
 
         public void StopManaging()
         {
-            _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat);
+            _heartbeatTimer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat);
+            _betweenDatacenterTimer.Change(rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat, rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat);
         }
 
         public void ClearNodes()
