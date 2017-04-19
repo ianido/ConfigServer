@@ -20,21 +20,23 @@ namespace yupisoft.ConfigServer.Core
         private ConfigServerTenants _tenants;
         private ClusterManager _clusterMan;
         private ServiceDiscoveryConfigSection _sdConfig;
+        private GeoServices _geoServices;
         private IServiceDiscovery[] servers;
         private bool _Monitoring = false;
 
-        public ConfigServerServices(IOptions<ServiceDiscoveryConfigSection> sdConfig, ILogger<ConfigServerServices> logger, ConfigServerTenants tenants, ClusterManager clusterMan)
+        public ConfigServerServices(IOptions<ServiceDiscoveryConfigSection> sdConfig, ILogger<ConfigServerServices> logger, ConfigServerTenants tenants, ClusterManager clusterMan, GeoServices geoServices)
         {
             _logger = logger;
             _tenants = tenants;
             _clusterMan = clusterMan;
+            _geoServices = geoServices;
             _sdConfig = sdConfig.Value;
             _timer = new Timer(new TimerCallback(Timer_Elapsed), tenants, Timeout.Infinite, 1000);
             _logger.LogInformation("Created ConfigServerServices with " + tenants.Tenants.Count + " tenants.");
 
             //Create Service Discovery Engines
             List<IServiceDiscovery> serv = new List<IServiceDiscovery>();
-            serv.Add(new DNSServer(_sdConfig.DNS, _logger, _tenants, _clusterMan));
+            serv.Add(new DNSServer(_sdConfig.DNS, _logger, _tenants, _clusterMan, _geoServices));
             servers = serv.ToArray();
         }
 

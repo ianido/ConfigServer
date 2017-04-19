@@ -9,6 +9,7 @@ using yupisoft.ConfigServer.Core.Cluster;
 using Microsoft.AspNetCore.Hosting;
 using System.IO;
 using Microsoft.AspNetCore.Builder;
+using yupisoft.ConfigServer.Core.Services;
 
 namespace yupisoft.ConfigServer.Core
 {
@@ -32,7 +33,10 @@ namespace yupisoft.ConfigServer.Core
 
             var settings = new TenantsConfigSection();
 
-            services.AddSingleton<ConfigServerTenants>();
+            services.AddSingleton<IGeoIPServiceProvider, GeoIPAPIProvider>();
+            services.AddSingleton<GeoServices>();
+
+            services.AddSingleton<ConfigServerTenants>();            
             services.AddSingleton<ConfigServerManager>();
             services.AddSingleton<ConfigServerServices>();
             services.AddSingleton<ConfigServerHooks>();

@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace yupisoft.ConfigServer.Core.Services
+namespace yupisoft.ConfigServer.Core.Cluster
 {
-    public enum ServiceBalancers
+    public enum ClusterNodeBalancers
     {
         Random,
         RoundRobin,
-        GeoLocalization,
         Performance
     }
 }

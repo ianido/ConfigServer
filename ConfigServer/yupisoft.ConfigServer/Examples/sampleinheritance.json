@@ -40,11 +40,12 @@
         "$service": "redis",
         "Id": "r01",
         "description": "Redis Server in Europa",
-        "balancer": "random",
+        "balancer": "geo",
         "tags": [
-          "primary","geo-region-europe"
+          "primary",
+          "geo-pos"
         ],
-        "address": "127.0.0.1",
+        "address": "2.21.92.25",
         "port": 80,
         "checks": [
           {
@@ -82,9 +83,10 @@
         "Id": "r02",
         "description": "Redis server in America",
         "tags": [
-          "primary","geo-region-america"
+          "secondary",
+          "geo-pos"
         ],
-        "address": "127.0.0.1",
+        "address": "1.0.15.25",
         "port": 80,
         "checks": [
           {

@@ -5,15 +5,17 @@ namespace yupisoft.ConfigServer.Core
 {
     public class JServiceGeoConfig
     {
-        public string Region { get; set; }
-        public string Country { get; set; }
-        public string State { get; set; }
-        
+        public string Continents { get; set; }
+        public string Countries { get; set; }
+        public string Regions { get; set; }
+        public string GeoPos { get; set; }
+
         public JServiceGeoConfig()
         {
-            Region = "*";
-            Country = "*";
-            State = "*";
+            Continents = "";
+            Countries = "";
+            Regions = "";
+            GeoPos = "";
         }
     }
 }

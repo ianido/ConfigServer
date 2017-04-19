@@ -17,6 +17,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private bool _inuse = false;
         public NodeConfigSection NodeConfig { get; private set; }
         public bool Active { get; set; }
+        public bool? LastChoosed { get; set; }
+        public bool LastCheckActive { get; set; }
         public int SkipAttempts { get; set; }
         public int Attempts { get; set; }
         public int Life { get; set; }
@@ -39,8 +41,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public int InUseCycles { get; set; }
         public int InUseMaxCycles { get; set; }
         public string Id { get { return NodeConfig.Id; } }
-        public string Address { get { return NodeConfig.Address; } }
-        public string WANAddress { get { return NodeConfig.WANAddress; } }
+        public string Uri { get { return NodeConfig.Uri; } }
+        public string WANUri { get { return NodeConfig.WANUri; } }
         public bool Self { get; set; }
         public NodeMode Mode
         {
@@ -57,6 +59,9 @@ namespace yupisoft.ConfigServer.Core.Cluster
         }
         public Node(NodeConfigSection config)
         {
+            LastChoosed = null;
+            Active = true;
+            LastCheckActive = true;
             NodeConfig = config;
             InUseMaxCycles = 20;
             Life = 2000;

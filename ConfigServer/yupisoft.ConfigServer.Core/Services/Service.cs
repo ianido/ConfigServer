@@ -22,16 +22,15 @@ namespace yupisoft.ConfigServer.Core.Services
                 _logger.LogTrace("Srv: " + this.Id + " Chk: " + CheckerId + " -> " + status.ToString());
                 ServiceCheckResult res = CheckResults.FirstOrDefault(c => c.CheckerId == CheckerId);
                 res.Result = status;
-
-                _lastCheckStatus = ServiceCheckStatus.InProgress;
+                ServiceCheckStatus lstatus = ServiceCheckStatus.InProgress;
                 // Determine the result.
                 if (CheckResults.Exists(e => e.Result == ServiceCheckStatus.Passing))
-                    _lastCheckStatus = ServiceCheckStatus.Passing;
+                    lstatus = ServiceCheckStatus.Passing;
                 if (CheckResults.Exists(e => e.Result == ServiceCheckStatus.Warning))
-                    _lastCheckStatus = ServiceCheckStatus.Warning;
+                    lstatus = ServiceCheckStatus.Warning;
                 if (CheckResults.Exists(e => e.Result == ServiceCheckStatus.Failing))
-                    _lastCheckStatus = ServiceCheckStatus.Failing;
-
+                    lstatus = ServiceCheckStatus.Failing;
+                _lastCheckStatus = lstatus;
                 res.Result = ServiceCheckStatus.Iddle;
             }
         }
@@ -56,6 +55,9 @@ namespace yupisoft.ConfigServer.Core.Services
                 else
                 if (Config.Balancer.ToLower().StartsWith("performance"))
                     return ServiceBalancers.Performance;
+                else
+                if (Config.Balancer.ToLower().StartsWith("geo"))
+                    return ServiceBalancers.GeoLocalization;
                 // Performance works by performance counters:
                 // the config specify the performance counter like: performance:srv_redis01_hitspersec
                 // In this case the counter: servicehitspersec will be evaluated and based on the value will determine 
@@ -78,11 +80,18 @@ namespace yupisoft.ConfigServer.Core.Services
                         if (parts.Length == 3)
                         {
                             var geo = new JServiceGeoConfig();
-                            if (parts[1].ToLower() == "country") geo.Country = parts[2];
-                            if (parts[1].ToLower() == "region") geo.Region = parts[2];
-                            if (parts[1].ToLower() == "state") geo.State = parts[2];
+                            if (parts[1].ToLower() == "countries") geo.Countries = parts[2];
+                            if (parts[1].ToLower() == "continents") geo.Continents = parts[2];
+                            if (parts[1].ToLower() == "regions") geo.Regions = parts[2];
+                            if (parts[1].ToLower() == "pos") geo.GeoPos = parts[2]; // lat,long
                             return geo;
-                        }
+                        } else
+                            if (parts.Length == 2)
+                            {
+                                var geo = new JServiceGeoConfig();
+                                if (parts[1].ToLower() == "pos") geo.GeoPos = "client"; // client location
+                                return geo;
+                            }
                     }
                 }
                 return null;
@@ -109,6 +118,7 @@ namespace yupisoft.ConfigServer.Core.Services
             _logger = logger;
             Config = config;
             LastChoosed = null;
+            _lastCheckStatus = ServiceCheckStatus.Iddle;
             List<ServiceCheck> lchecks = new List<ServiceCheck>();
             CheckResults = new List<ServiceCheckResult>();
             foreach (var check in config.Checks)

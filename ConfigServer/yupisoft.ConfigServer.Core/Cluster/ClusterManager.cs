@@ -24,7 +24,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private ILogger _logger;
         private ConfigurationChanger _cfgChanger;
         private DatacenterConfigSection _datacenterConfig;
-        //private ConfigServerManager _cfgServer;
+        private ClusterConfigSection _clusterConfig;
         private ConfigServerTenants _tenantManager;
         private int _NodesMonitoringHeartbeat = 2000; // Milliseconds
         private int _NodesMonitoringMaxAttempts = 3;
@@ -33,6 +33,25 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private HmacAuthenticationOptions _clusterSecurity;
         private List<Node> _nodes;
         private DateTime _AliveSince;
+        public ClusterNodeBalancers Balancer
+        {
+            get
+            {
+                if (_clusterConfig.Balancer.ToLower() == "random")
+                    return ClusterNodeBalancers.Random;
+                else
+                   if (_clusterConfig.Balancer.ToLower() == "roundrobin")
+                    return ClusterNodeBalancers.RoundRobin;
+                else
+                   if (_clusterConfig.Balancer.ToLower().StartsWith("performance"))
+                    return ClusterNodeBalancers.Performance;
+                // Performance works by performance counters:
+                // the config specify the performance counter like: performance:srv_redis01_hitspersec
+                // In this case the counter: servicehitspersec will be evaluated and based on the value will determine 
+                // which server will choose.
+                return ClusterNodeBalancers.Random;
+            }
+        }
 
         public string DataCenterId
         {
@@ -69,20 +88,21 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _AliveSince = DateTime.UtcNow;
             _cfgChanger = cfgChanger;
             _tenantManager = tenantManager;
-            _datacenterConfig = datacenterConfig;
+            _datacenterConfig = datacenterConfig.Value;
+            _clusterConfig = clusterConfig.Value;
 
             foreach (var tenant in tenantManager.Tenants)
                 tenant.Store.Change += Store_Change;
 
             _logger = logger;
             _nodes = new List<Node>();
-            _NodesMonitoringHeartbeat = clusterConfig.Value.Monitoring.Interval;
-            _NodesMonitoringMaxAttempts = clusterConfig.Value.Monitoring.MaxAttempts;
-            _NodesMonitoringSkipAttemptsOnFail = clusterConfig.Value.Monitoring.SkipAttemptsOnFail;
-            _NodesMonitoringLife = clusterConfig.Value.Monitoring.NodesLife;
-            _clusterSecurity = clusterConfig.Value.Security;
+            _NodesMonitoringHeartbeat = _clusterConfig.Monitoring.Interval;
+            _NodesMonitoringMaxAttempts = _clusterConfig.Monitoring.MaxAttempts;
+            _NodesMonitoringSkipAttemptsOnFail = _clusterConfig.Monitoring.SkipAttemptsOnFail;
+            _NodesMonitoringLife = _clusterConfig.Monitoring.NodesLife;
+            _clusterSecurity = _clusterConfig.Security;
 
-            var nodesConfig = clusterConfig.Value.Nodes;
+            var nodesConfig = _clusterConfig.Nodes;
             foreach(var node in nodesConfig)
             {
                 if (node.Enabled)
@@ -99,7 +119,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
             if (selfNode == null)
             {
-                var newNode = new SelfNode(new NodeConfigSection() { Id = clusterConfig.Value.OwnNodeName, Address = clusterConfig.Value.OwnNodeUrl, Enabled = true }) ;
+                var newNode = new SelfNode(new NodeConfigSection() { Id = clusterConfig.Value.OwnNodeName, Uri = clusterConfig.Value.OwnNodeUrl, Enabled = true }) ;
                 _nodes.Add(newNode);
             }
 
@@ -291,7 +311,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                         _logger.LogTrace(req.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") --> " + node.Id + ".");
 
                     selfNode.InUse = true;
-                    client.PostAsync(node.Address + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey, _clusterSecurity.Encrypted).ContinueWith((a) =>
+                    client.PostAsync(node.Uri + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey, _clusterSecurity.Encrypted).ContinueWith((a) =>
                     {
                         lock (node)
                         {
@@ -302,18 +322,21 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                     ApiSingleResult<HeartBeatMessage> rsMsg = JsonConvert.DeserializeObject<ApiSingleResult<HeartBeatMessage>>(a.Result.Content.ReadAsStringAsync().Result);
                                     if ((rsMsg == null) || (rsMsg.Item == null))
                                     {
+                                        node.LastCheckActive = false;
                                         _logger.LogError("Node: " + node.Id + " return Invalid response. attempt: " + node.Attempts);
                                         node.Attempts++;
                                         node.Priority--;
                                     }
                                     else
                                     {
+                                        node.LastCheckActive = true;
                                         _logger.LogTrace(rsMsg.Item.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + node.Id + " Log(" + rsMsg.Item.LastLogId + ")");
                                         ResponseFromHeartBeat(node, rsMsg.Item);
                                     }
                                 }
                                 else
                                 {
+                                    node.LastCheckActive = false;
                                     node.Attempts++;
                                     node.Priority--;
                                     if (a.Status == TaskStatus.RanToCompletion)
@@ -325,6 +348,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                             }
                             catch (Exception ex)
                             {
+                                node.LastCheckActive = false;
                                 node.Attempts++;
                                 node.Priority--;
                                 _logger.LogCritical("Exception heartbeating node: " + node.Id + "\r\n" + ex.ToString());
@@ -343,6 +367,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                         {
                                             _cfgChanger.DisableClusterNode(node.Id);
                                             node.Active = false;
+                                            node.LastCheckActive = false;
                                             node.Attempts = 0;
                                             _logger.LogError("Node " + node.Id + " life out; Disabled. ");
                                         }
@@ -352,6 +377,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                                             _logger.LogError("Heartbeat failed to " + node.Id + " " + node.Attempts + " attempts; Skip: " + node.SkipAttempts);
                                             node.Attempts = 0;
                                             node.Life--;
+                                            node.LastCheckActive = false;
                                         }
                                     }
                                 }
@@ -456,24 +482,12 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
         public void StartManaging()
         {
-            _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat);
-            lock (_nodes)
-            {
-                foreach (var w in _nodes)
-                    w.Active = true;
-            }
             _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat);
         }
 
         public void StopManaging()
         {
             _timer.Change(Timeout.Infinite, _NodesMonitoringHeartbeat);
-            lock (_nodes)
-            {
-                foreach (var w in _nodes)
-                    w.Active = false;
-            }
-            _timer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat);
         }
 
         public void ClearNodes()

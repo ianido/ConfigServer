@@ -35,7 +35,7 @@ namespace yupisoft.ConfigServer.Core
             if (toEdit != null)
             {
                 toEdit["Enabled"] = node.Enabled;
-                toEdit["Address"] = node.Address;
+                toEdit["Address"] = node.Uri;
                 toEdit["Mode"] = node.Mode;
                 var modifiedJsonString = JsonConvert.SerializeObject(jsonObject, Formatting.Indented);
                 File.WriteAllText(_AppSettings, modifiedJsonString);

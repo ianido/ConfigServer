@@ -4,11 +4,11 @@ using System.Text;
 
 namespace yupisoft.ConfigServer.Core.Services
 {
-    public enum ServiceBalancers
+
+
+
+    public interface IGeoIPServiceProvider
     {
-        Random,
-        RoundRobin,
-        GeoLocalization,
-        Performance
+        GeoIPResponse GeoLocate(string ipAddress);
     }
 }

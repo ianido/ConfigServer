@@ -13,22 +13,38 @@ namespace yupisoft.ConfigServer.Core.Services
 {
     public class DNSServer : IServiceDiscovery
     {
+        public enum DNSQueryClassification
+        {
+            Unknow,
+            Node,
+            Nodes,
+            Service,
+            Address
+        }
+
+        private int _defaultNodeTTL = 0;
+        private int _defaultServiceTTL = 0;
+        private uint _timeStamp = 0; //
+
         private DNSConfigSection _config;
         private ConfigServerTenants _tenants;
         private ClusterManager _clusterMan;
+        private GeoServices _geoServices;
+
         private ILogger _logger;
         private DnsServer _dnsServer;
         private bool _softStop = true;
-        private Dictionary<string, Service> _serviceAddresses;
+        private Dictionary<string,string> _knownAddresses;
 
 
-        public DNSServer(DNSConfigSection config, ILogger logger, ConfigServerTenants tenants, ClusterManager clusterMan)
+        public DNSServer(DNSConfigSection config, ILogger logger, ConfigServerTenants tenants, ClusterManager clusterMan, GeoServices geoServices)
         {
             _config = config;
             _logger = logger;
             _tenants = tenants;
             _clusterMan = clusterMan;
-            _serviceAddresses = new Dictionary<string, Service>();
+            _geoServices = geoServices;
+            _knownAddresses = new Dictionary<string,string>();
             try
             {
                 IPAddress addr = IPAddress.Any;
@@ -52,6 +68,7 @@ namespace yupisoft.ConfigServer.Core.Services
             {
                 try
                 {
+                    _timeStamp = uint.Parse(DateTime.UtcNow.ToString("MMddHHmmss"));
                     _softStop = false;
                     // _dnsServer.Start();
                     _logger.LogTrace("Starting DNS Server Queries.");
@@ -83,16 +100,229 @@ namespace yupisoft.ConfigServer.Core.Services
             }
         }
 
-        private Service GetService(string serviceName, string tag)
+        private Service[] GetService(string serviceName, string tag, string clientAddr)
         {
+            List<Service> discoverServices = new List<Service>();
             foreach (var tenant in _tenants.Tenants)
                 if (tenant.EnableServiceDiscovery)
                     foreach (var service in tenant.Services)
-                        if ((service.Value.Name == serviceName) && (service.Value.Tags.Contains(tag)))
-                            return service.Value;
-            return null;
+                        if ((service.Value.Name == serviceName) && (tag == "" || service.Value.Tags.Contains(tag)))
+                            discoverServices.Add(service.Value);
+
+            // Reorganize Services base on
+            List<Service> returnedServices = new List<Service>();
+
+            foreach (var service in discoverServices)
+            {
+                ServiceBalancers balancer = service.Balancer;
+                if (balancer == ServiceBalancers.GeoLocalization)
+                {
+                    _geoServices.SortByGeolocation(discoverServices, returnedServices, clientAddr);
+                    if (returnedServices.Count == 0) balancer = ServiceBalancers.Random;
+                    else
+                        break;
+                }
+                if (balancer == ServiceBalancers.Random)
+                {
+                    Random rnd = new Random(DateTime.UtcNow.Millisecond);
+                    while (discoverServices.Count != returnedServices.Count)
+                    {
+                        var next = rnd.Next(discoverServices.Count);
+                        if (returnedServices.Contains(discoverServices[next])) continue;
+                        discoverServices[next].LastChoosed = false;
+                        if (returnedServices.Count == 0) discoverServices[next].LastChoosed = true;
+                        returnedServices.Add(discoverServices[next]);
+                    }
+                    break;
+                }
+                else
+                if (balancer == ServiceBalancers.RoundRobin)
+                {
+                    for (int i = 0; i < discoverServices.Count; i++)
+                    {
+                        if ((discoverServices[i].LastChoosed.HasValue) && (discoverServices[i].LastChoosed.Value)) {
+                            discoverServices[i].LastChoosed = false;
+                            continue;
+                        }
+                        discoverServices[i].LastChoosed = false;
+                        if (returnedServices.Count == 0) discoverServices[i].LastChoosed = true;
+                        returnedServices.Add(discoverServices[i]);
+                    }
+                    for (int i = 0; i < discoverServices.Count; i++)
+                    {
+                        if (returnedServices.Contains(discoverServices[i])) continue;
+                        discoverServices[i].LastChoosed = false;
+                        returnedServices.Add(discoverServices[i]);
+                    }
+                    break;
+                }
+            }            
+            return returnedServices.ToArray();
         }
 
+        private Node[] GetAllNodes()
+        {
+            List<Node> discoverNodes = _clusterMan.Nodes.Where(n => n.Mode == Node.NodeMode.Server && n.Active && n.LastCheckActive).ToList();
+
+            // Reorganize Services base on
+            List<Node> returnedNodes = new List<Node>();
+
+            foreach (var node in discoverNodes)
+            {
+                if (_clusterMan.Balancer == ClusterNodeBalancers.Random)
+                {
+                    Random rnd = new Random(DateTime.UtcNow.Millisecond);
+                    while (discoverNodes.Count != returnedNodes.Count)
+                    {
+                        var next = rnd.Next(discoverNodes.Count);
+                        if (returnedNodes.Contains(discoverNodes[next])) continue;
+                        discoverNodes[next].LastChoosed = false;
+                        if (returnedNodes.Count == 0) discoverNodes[next].LastChoosed = true;
+                        returnedNodes.Add(discoverNodes[next]);
+                    }
+                    break;
+                }
+                else
+                if (_clusterMan.Balancer == ClusterNodeBalancers.RoundRobin)
+                {
+                    for (int i = 0; i < discoverNodes.Count; i++)
+                    {
+                        if ((discoverNodes[i].LastChoosed.HasValue) && (discoverNodes[i].LastChoosed.Value))
+                        {
+                            discoverNodes[i].LastChoosed = false;
+                            continue;
+                        }
+                        discoverNodes[i].LastChoosed = false;
+                        if (returnedNodes.Count == 0) discoverNodes[i].LastChoosed = true;
+                        returnedNodes.Add(discoverNodes[i]);
+                    }
+                    for (int i = 0; i < discoverNodes.Count; i++)
+                    {
+                        if (returnedNodes.Contains(discoverNodes[i])) continue;
+                        discoverNodes[i].LastChoosed = false;
+                        returnedNodes.Add(discoverNodes[i]);
+                    }
+                    break;
+                }
+            }
+
+            return returnedNodes.ToArray();
+        }
+
+        private string IPtoHex(string ip)
+        {
+            string hex = "";
+            try
+            {
+                foreach (var part in ip.Split('.'))
+                    hex += int.Parse(part).ToString("X");
+            }
+            catch 
+            {
+                _logger.LogTrace("DNS: Invalid IP Address: " + ip);
+            }
+            return hex.ToLower();
+        }
+
+        private static IPEndPoint Parse(string endpointstring)
+        {
+            return Parse(endpointstring, -1);
+        }
+
+        private static IPEndPoint Parse(string endpointstring, int defaultport)
+        {
+            if (string.IsNullOrEmpty(endpointstring)
+                || endpointstring.Trim().Length == 0)
+            {
+                throw new ArgumentException("Endpoint descriptor may not be empty.");
+            }
+
+            if (defaultport != -1 &&
+                (defaultport < IPEndPoint.MinPort
+                || defaultport > IPEndPoint.MaxPort))
+            {
+                throw new ArgumentException(string.Format("Invalid default port '{0}'", defaultport));
+            }
+
+            string[] values = endpointstring.Split(new char[] { ':' });
+            IPAddress ipaddy;
+            int port = -1;
+
+            //check if we have an IPv6 or ports
+            if (values.Length <= 2) // ipv4 or hostname
+            {
+                if (values.Length == 1)
+                    //no port is specified, default
+                    port = defaultport;
+                else
+                    port = getPort(values[1]);
+
+                //try to use the address as IPv4, otherwise get hostname
+                if (!IPAddress.TryParse(values[0], out ipaddy))
+                    ipaddy = getIPfromHost(values[0]).Result;
+            }
+            else if (values.Length > 2) //ipv6
+            {
+                //could [a:b:c]:d
+                if (values[0].StartsWith("[") && values[values.Length - 2].EndsWith("]"))
+                {
+                    string ipaddressstring = string.Join(":", values.Take(values.Length - 1).ToArray());
+                    ipaddy = IPAddress.Parse(ipaddressstring);
+                    port = getPort(values[values.Length - 1]);
+                }
+                else //[a:b:c] or a:b:c
+                {
+                    ipaddy = IPAddress.Parse(endpointstring);
+                    port = defaultport;
+                }
+            }
+            else
+            {
+                throw new FormatException(string.Format("Invalid endpoint ipaddress '{0}'", endpointstring));
+            }
+
+            if (port == -1)
+                throw new ArgumentException(string.Format("No port specified: '{0}'", endpointstring));
+
+            return new IPEndPoint(ipaddy, port);
+        }
+
+        private static int getPort(string p)
+        {
+            int port;
+
+            if (!int.TryParse(p, out port)
+             || port < IPEndPoint.MinPort
+             || port > IPEndPoint.MaxPort)
+            {
+                throw new FormatException(string.Format("Invalid end point port '{0}'", p));
+            }
+
+            return port;
+        }
+
+        private static async Task<IPAddress> getIPfromHost(string p)
+        {
+            var hosts = await Dns.GetHostAddressesAsync(p);
+
+            if (hosts == null || hosts.Length == 0)
+                throw new ArgumentException(string.Format("Host not found: {0}", p));
+
+            return hosts[0];
+        }
+
+        private DNSQueryClassification CheckQuery(string[] parts)
+        {
+            if (parts == null) throw new ArgumentNullException("Parts can not be null.");
+            if (parts.Length < 2) throw new ArgumentException("Three parts expected.");
+            var part1 = parts[parts.Length - 2];
+            var part2 = (parts.Length > 2) ? parts[parts.Length - 3] : "";
+            if ((part1 == "node") || (part2 == "node")) return DNSQueryClassification.Node;
+            if ((part1 == "nodes") || (part2 == "nodes")) return DNSQueryClassification.Nodes;
+            if ((part1 == "service") || (part2 == "service")) return DNSQueryClassification.Service;
+            if ((part1 == "addr") || (part2 == "addr")) return DNSQueryClassification.Address;
+            return DNSQueryClassification.Unknow;
+        }
 
         private async Task Server_QueryReceived(object sender, QueryReceivedEventArgs eventArgs)
         {
@@ -102,52 +332,98 @@ namespace yupisoft.ConfigServer.Core.Services
             if (message == null)
                 return;
 
-
             if ((message.Questions.Count == 1))
             {
                 // send query to upstream server
                 DnsQuestion question = message.Questions[0];
-                DnsMessage response = message.CreateResponseInstance();
+                string labels = string.Join(".", question.Name.Labels);
+                _logger.LogTrace("DNS: query: " + labels);
 
-                if (question.Name.Labels.Length < 3)
+                DnsMessage response = message.CreateResponseInstance();
+                response.EDnsOptions = null;
+
+
+                if (question.Name.Labels.Length < 2)
                 {
-                    _logger.LogTrace("DNS: Invalid query: " + string.Join(".", question.Name.Labels));
+                    _logger.LogTrace("DNS: Invalid query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                     NoResponse(response, eventArgs);
                     return;
                 }
 
                 if (question.Name.Labels[question.Name.Labels.Length - 1] == _config.Mainzone.Trim('.'))
-                {                    
-                    List<Service> foundServices = new List<Service>();
+                {
 
-                    if (question.Name.Labels.Contains("node"))
+                    #region Register all the addresses
+                    foreach (var node in _clusterMan.Nodes)
+                    {
+                        try
+                        {
+                            lock (_knownAddresses)
+                            {
+                                if (node.Mode == Node.NodeMode.Client) continue;
+                                var lanEndpoint = Parse(new Uri(node.Uri).Authority, 80);
+                                var wanEndpoint = Parse(new Uri(node.WANUri).Authority, 80);
+
+                                if (!_knownAddresses.ContainsKey(lanEndpoint.Address.ToString()))
+                                    _knownAddresses.Add(lanEndpoint.Address.ToString(), IPtoHex(lanEndpoint.Address.ToString()));
+                                if (!_knownAddresses.ContainsKey(wanEndpoint.Address.ToString()))
+                                    _knownAddresses.Add(wanEndpoint.Address.ToString(), IPtoHex(wanEndpoint.Address.ToString()));
+
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("DNS: Invalid one of node Uris: " + node.Uri + " or " + node.WANUri + " Error: " + ex.Message);
+                        }
+                    }
+
+                    foreach (var tenant in _tenants.Tenants)
+                        if (tenant.EnableServiceDiscovery)
+                            foreach (var service in tenant.Services)
+                            {
+                                lock (_knownAddresses)
+                                {
+                                    if (!_knownAddresses.ContainsKey(service.Value.Address))
+                                        _knownAddresses.Add(service.Value.Address, IPtoHex(service.Value.Address));
+                                }
+                            }
+                    #endregion
+
+                    #region IF Query Type: .node[.datacenter].<domain>
+                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Node)
                     {
                         // <node>.node[.datacenter].<domain>
                         // lan.<node>.node[.datacenter].<domain>
                         // wan.<node>.node[.datacenter].<domain>
 
-                        int ind = Array.IndexOf(question.Name.Labels, "node");
-                        if (ind == 0) {
-                            _logger.LogWarning("DNS: Invalid query, missing node for query: " + string.Join(".",question.Name.Labels));
+                        int ind = Array.LastIndexOf(question.Name.Labels, "node");
+                        if (ind == 0)
+                        {
+                            _logger.LogWarning("DNS: Invalid query, missing node for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
                         string nodeId = question.Name.Labels[ind - 1];
-                        var node = _clusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId);
+                        var node = _clusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId && n.Mode == Node.NodeMode.Server && n.Active && n.LastCheckActive);
                         if (node == null)
                         {
-                            _logger.LogWarning("DNS: Node: " + nodeId + " not found for query: " + string.Join(".", question.Name.Labels));
+                            _logger.LogWarning("DNS: Node: " + nodeId + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
                         // Check DatacenterName
-                        if (question.Name.Labels[question.Name.Labels.Length - 2] != _clusterMan.DataCenterId)
+                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
                         {
-                            _logger.LogTrace("DNS: No this datacenter, node: " + nodeId + " not found for query: " + string.Join(".", question.Name.Labels));
+                            _logger.LogTrace("DNS: No this datacenter, node: " + nodeId + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
-                        string nAddress = node.Address;
+                        var lanEndpoint = Parse(new Uri(node.Uri).Authority, 80);
+                        var wanEndpoint = Parse(new Uri(node.WANUri).Authority, 80);
+                        var nAddress = lanEndpoint;
                         if (ind - 1 != 0)
                         {
                             // lan.<node>.node[.datacenter].<domain>
@@ -155,46 +431,145 @@ namespace yupisoft.ConfigServer.Core.Services
                             if (!string.IsNullOrEmpty(question.Name.Labels[ind - 2]))
                             {
                                 string wanOrlan = question.Name.Labels[ind - 2];
-                                if (wanOrlan.ToLower() == "wan") nAddress = node.WANAddress;
+                                if (wanOrlan.ToLower() == "wan") nAddress = wanEndpoint;
                             }
                         }
-                        if (IPAddress.TryParse(nAddress, out IPAddress nodeAddress))
+                        if (IPAddress.TryParse(nAddress.Address.ToString(), out IPAddress nodeAddress))
                         {
                             // Check record Type
                             if ((question.RecordType == RecordType.Any) || (question.RecordType == RecordType.A))
                             {
                                 response.ReturnCode = ReturnCode.NoError;
-                                response.AnswerRecords.Add(new ARecord(question.Name, 3600, nodeAddress));
+                                response.AnswerRecords.Add(new ARecord(question.Name, _defaultNodeTTL, nodeAddress));
+                                response.IsAuthoritiveAnswer = true;
+                                eventArgs.Response = response;
+                                return;
+                            }
+                            else
+                            if ((question.RecordType == RecordType.Srv))
+                            {
+                                response.ReturnCode = ReturnCode.NoError;
+                                if (_knownAddresses.ContainsKey(nAddress.Address.ToString()))
+                                {
+                                    string target = _knownAddresses[nAddress.Address.ToString()] + ".addr." + _clusterMan.DataCenterId.ToLower() + "." + _config.Mainzone.Trim('.'); ;
+                                    response.AnswerRecords.Add(new SrvRecord(question.Name, _defaultServiceTTL, 1, 1, Convert.ToUInt16(nAddress.Port), DomainName.Parse(target)));
+                                    response.AdditionalRecords.Add(new ARecord(DomainName.Parse(target), _defaultServiceTTL, nAddress.Address));
+                                }
+                                else
+                                {
+                                    _logger.LogTrace("DNS: Can not find Target address for IP: " + nAddress.Address.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                }
+                                response.IsAuthoritiveAnswer = true;
+                                eventArgs.Response = response;
                                 return;
                             }
                             else
                             {
-                                _logger.LogTrace("DNS: Invalid Record Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels));
+                                _logger.LogTrace("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                                 NoResponse(response, eventArgs);
+                                return;
                             }
                         }
                         else
                         {
-                            // If Node Address is not IP; Attempt to resolve the address using local DNS
-                            DnsMessage upstreamResponse = await DnsClient.Default.ResolveAsync(DomainName.Parse(nAddress), RecordType.A, RecordClass.Any);
-                            if ((upstreamResponse != null) && (upstreamResponse.AnswerRecords.Count > 0) && (upstreamResponse.AnswerRecords[0].RecordType == RecordType.A))
-                            {
-                                nodeAddress = ((ARecord)upstreamResponse.AnswerRecords[0]).Address;
-                                response.ReturnCode = ReturnCode.NoError;
-                                response.AnswerRecords.Add(new ARecord(question.Name, 3600, nodeAddress));
-                                return;
-                            }
+                            _logger.LogTrace("DNS: Invalid IP Address: " + nAddress + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            NoResponse(response, eventArgs);
+                            return;
                         }
                     }
-                     else 
+                    #endregion
 
+                    else
 
-                    if (question.Name.Labels.Contains("service"))
+                    #region IF Query Type: nodes[.datacenter].<domain>
+                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Nodes)
                     {
-                        int ind = Array.IndexOf(question.Name.Labels, "service");
+                        // nodes[.datacenter].<domain>
+                        // lan.nodes[.datacenter].<domain>
+                        // wan.nodes[.datacenter].<domain>
+
+                        int ind = Array.LastIndexOf(question.Name.Labels, "nodes");
+
+                        // Check DatacenterName
+                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "nodes")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
+                        {
+                            _logger.LogTrace("DNS: No this datacenter for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            NoResponse(response, eventArgs);
+                            return;
+                        }
+
+                        Node[] nodes = GetAllNodes();
+
+                        foreach (var node in nodes)
+                        {
+                            var lanEndpoint = Parse(new Uri(node.Uri).Authority, 80);
+                            var wanEndpoint = Parse(new Uri(node.WANUri).Authority, 80);
+                            var nAddress = lanEndpoint;
+                            if (ind != 0)
+                            {
+                                // lan.<node>.node[.datacenter].<domain>
+                                // wan.<node>.node[.datacenter].<domain>
+                                if (!string.IsNullOrEmpty(question.Name.Labels[ind - 1]))
+                                {
+                                    string wanOrlan = question.Name.Labels[ind - 1];
+                                    if (wanOrlan.ToLower() == "wan") nAddress = wanEndpoint;
+                                }
+                            }
+                            if (IPAddress.TryParse(nAddress.Address.ToString(), out IPAddress nodeAddress))
+                            {
+                                // Check record Type
+                                if ((question.RecordType == RecordType.Any) || (question.RecordType == RecordType.A))
+                                {
+                                    response.ReturnCode = ReturnCode.NoError;
+                                    response.AnswerRecords.Add(new ARecord(question.Name, _defaultNodeTTL, nodeAddress));
+                                }
+                                else
+                                if ((question.RecordType == RecordType.Srv))
+                                {
+                                    response.ReturnCode = ReturnCode.NoError;
+                                    if (_knownAddresses.ContainsKey(nAddress.Address.ToString()))
+                                    {
+                                        string target = _knownAddresses[nAddress.Address.ToString()] + ".addr." + _clusterMan.DataCenterId.ToLower() + "." + _config.Mainzone.Trim('.'); ;
+                                        response.AnswerRecords.Add(new SrvRecord(question.Name, _defaultServiceTTL, 1, 1, Convert.ToUInt16(nAddress.Port), DomainName.Parse(target)));
+                                        response.AdditionalRecords.Add(new ARecord(DomainName.Parse(target), _defaultServiceTTL, nAddress.Address));
+                                    }
+                                    else
+                                    {
+                                        _logger.LogTrace("DNS: Can not find Target address for IP: " + nAddress.Address.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogTrace("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                    NoResponse(response, eventArgs);
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogTrace("DNS: Invalid IP Address: " + nAddress + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            }
+                        }
+                        response.IsAuthoritiveAnswer = true;
+                        eventArgs.Response = response;
+                        return;
+                    }
+                    #endregion
+
+                    else
+
+                    #region IF Query Type: .service[.datacenter].<domain>
+                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Service)
+                    {
+
+                        int ind = Array.LastIndexOf(question.Name.Labels, "service");
                         if (ind == 0)
                         {
-                            _logger.LogWarning("DNS: Invalid query, missing service for query: " + string.Join(".", question.Name.Labels));
+                            _logger.LogWarning("DNS: Invalid query, missing service for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
@@ -212,88 +587,177 @@ namespace yupisoft.ConfigServer.Core.Services
 
                         if (part1.StartsWith("_") && part2.StartsWith("_"))
                         {
-                            serviceName = part2;
-                            tag = part1;
-                        } else
+                            serviceName = part2.Substring(1);
+                            tag = part1.Substring(1);
+                        }
+                        else
                         {
                             serviceName = part1;
                             tag = part2;
                         }
 
-                        var service = GetService(serviceName, tag);
-                        if (service == null)
+                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
                         {
-                            _logger.LogWarning("DNS: Service: " + serviceName + " not found for query: " + string.Join(".", question.Name.Labels));
+                            _logger.LogTrace("DNS: No this datacenter, service: " + serviceName + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            NoResponse(response, eventArgs);
+                            return;
+                        }
+
+                        var services = GetService(serviceName, tag, eventArgs.RemoteEndpoint.Address.ToString());
+                        if ((services == null) || (services.Length == 0))
+                        {
+                            _logger.LogWarning("DNS: Service: " + serviceName + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
                         // Check DatacenterName
-                        if (question.Name.Labels[question.Name.Labels.Length - 2] != _clusterMan.DataCenterId)
+
+
+                        ushort priority = 1;
+                        foreach (var service in services)
                         {
-                            _logger.LogTrace("DNS: No this datacenter, service: " + serviceName + " not found for query: " + string.Join(".", question.Name.Labels));
+                            if ((service.LastCheckStatus != ServiceCheckStatus.Iddle) && (service.LastCheckStatus != ServiceCheckStatus.Passing))
+                                continue;
+                            if (IPAddress.TryParse(service.Address, out IPAddress serverAddress))
+                            {
+                                if ((question.RecordType == RecordType.Any) || (question.RecordType == RecordType.A))
+                                {
+                                    response.ReturnCode = ReturnCode.NoError;
+                                    response.AnswerRecords.Add(new ARecord(question.Name, _defaultServiceTTL, serverAddress));
+                                }
+                                else if (question.RecordType == RecordType.Srv)
+                                {
+                                    response.ReturnCode = ReturnCode.NoError;
+                                    // Hay que crear una direccion unica para cada ip address
+                                    //
+                                    // c0a80133.addr.<datacenter>.configserver 
+                                    //
+                                    if (_knownAddresses.ContainsKey(service.Address))
+                                    {
+                                        string target = _knownAddresses[service.Address] + ".addr." + _clusterMan.DataCenterId.ToLower() + "." + _config.Mainzone.Trim('.');
+                                        response.AnswerRecords.Add(new SrvRecord(question.Name, _defaultServiceTTL, priority, 1, Convert.ToUInt16(service.Port), DomainName.Parse(target)));
+                                        response.AdditionalRecords.Add(new ARecord(DomainName.Parse(target), _defaultServiceTTL, serverAddress));
+                                    }
+                                    else
+                                    {
+                                        _logger.LogTrace("DNS: Can not find Target address for IP: " + service.Address + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                    }                                    
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("DNS: Service: " + serviceName + ", invalid IP Address: " + service.Address + " for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            }
+                            priority++;
+                        }
+                        response.IsAuthoritiveAnswer = true;
+                        eventArgs.Response = response;
+                        return;
+                    }
+                    #endregion
+
+                    else
+
+                    #region IF Query Type: .addr[.datacenter].<domain>
+                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Address)
+                    {
+                        // <addr>.addr[.datacenter].<domain>
+
+                        int ind = Array.LastIndexOf(question.Name.Labels, "addr");
+                        if (ind == 0)
+                        {
+                            _logger.LogWarning("DNS: Invalid query, missing addr for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
-                        if (IPAddress.TryParse(service.Address, out IPAddress nodeAddress))
+                        string addr = question.Name.Labels[ind - 1].ToLower();
+
+                        if (!_knownAddresses.ContainsValue(addr))
                         {
+                            _logger.LogWarning("DNS: Addr: " + addr + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            NoResponse(response, eventArgs);
+                            return;
+                        }
+
+                        // Check DatacenterName
+                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
+                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
+                        {
+                            _logger.LogTrace("DNS: No this datacenter, addr: " + addr + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            NoResponse(response, eventArgs);
+                            return;
+                        }
+                        var knownaddr = _knownAddresses.FirstOrDefault(v => v.Value == addr);
+
+                        if (IPAddress.TryParse(knownaddr.Key, out IPAddress kAddress))
+                        {
+                            // Check record Type
                             if ((question.RecordType == RecordType.Any) || (question.RecordType == RecordType.A))
                             {
                                 response.ReturnCode = ReturnCode.NoError;
-                                response.AnswerRecords.Add(new ARecord(question.Name, 3600, nodeAddress));
-                                return;
-                            }
-                            else if (question.RecordType == RecordType.Srv)
-                            {
-                                response.ReturnCode = ReturnCode.NoError;
-                                // Hay que crear una direccion unica para cada servicio/nodo/datacenter/puerto
-                                // Se puede calcular un hash con estos valores y asi obtener un unico address. 
-                                //
-                                // c0a80133.addr.<datacenter>.configserver 
-                                //
-
+                                response.AnswerRecords.Add(new ARecord(question.Name, _defaultNodeTTL, kAddress));
+                                response.IsAuthoritiveAnswer = true;
+                                eventArgs.Response = response;
                                 return;
                             }
                             else
                             {
-                                _logger.LogTrace("DNS: Invalid Record Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels));
+                                _logger.LogWarning("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                                 NoResponse(response, eventArgs);
+                                return;
                             }
                         }
                         else
                         {
-                            _logger.LogWarning("DNS: Service: " + serviceName + ", invalid IP Address: " + service.Address + " for query: " + string.Join(".", question.Name.Labels));
+                            _logger.LogError("DNS: Invalid IP Address: " + knownaddr.Key + " (Internal Pool), for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
                     }
+                    #endregion
 
-                    
+                    NoResponse(response, eventArgs);
+                    return;
                 }
                 else
                     if (_config.FordwardingEnabled)
+                {
+                    _logger.LogTrace("DNS: Forwarding for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+
+                    DnsMessage upstreamResponse = await DnsClient.Default.ResolveAsync(question.Name, question.RecordType, question.RecordClass);
+
+                    // if got an answer, copy it to the message sent to the client
+                    if (upstreamResponse != null)
                     {
-                        DnsMessage upstreamResponse = await DnsClient.Default.ResolveAsync(question.Name, question.RecordType, question.RecordClass);
+                        foreach (DnsRecordBase record in (upstreamResponse.AnswerRecords))
+                            response.AnswerRecords.Add(record);
 
-                        // if got an answer, copy it to the message sent to the client
-                        if (upstreamResponse != null)
-                        {
-                            foreach (DnsRecordBase record in (upstreamResponse.AnswerRecords))
-                                response.AnswerRecords.Add(record);
+                        foreach (DnsRecordBase record in (upstreamResponse.AdditionalRecords))
+                            response.AdditionalRecords.Add(record);
 
-                            foreach (DnsRecordBase record in (upstreamResponse.AdditionalRecords))
-                                response.AdditionalRecords.Add(record);
-
-                            response.ReturnCode = ReturnCode.NoError;
-                            eventArgs.Response = response;
-                        }
-
+                        response.ReturnCode = ReturnCode.NoError;
+                        response.IsRecursionDesired = true;
+                        response.IsAuthoritiveAnswer = false;
+                        eventArgs.Response = response;
                     }
+                }
             }
         }
 
         private void NoResponse(DnsMessage response, QueryReceivedEventArgs eventArgs)
         {
-            response.ReturnCode = ReturnCode.NoError;
+            response.ReturnCode = ReturnCode.NxDomain;            
+            response.AuthorityRecords.Add(new SoaRecord(DomainName.Parse(_config.Mainzone), 0, DomainName.Parse("ns." + _config.Mainzone), DomainName.Parse("postmaster." + _config.Mainzone), _timeStamp, 3600, 600, 0,0));
+            eventArgs.Response = response;
         }
 
         private void ValidResponse(DnsMessage response, QueryReceivedEventArgs eventArgs)
@@ -301,10 +765,9 @@ namespace yupisoft.ConfigServer.Core.Services
             response.ReturnCode = ReturnCode.NoError;
         }
 
-
         private async Task Server_ClientConnected(object sender, ClientConnectedEventArgs eventArgs)
         {
-            return;
+            
         }
     }
 }
