@@ -15,6 +15,7 @@ namespace yupisoft.ConfigServer.Core
         public string Type { get; set; }
         public string Description { get; set; }
         public string Node { get; set; }
+        public JHookNotificationConfig[] Notifications { get; set; }
         public string Http { get; set; }
         public string HttpMethod { get; set; }
         public string Interval { get; set; }

@@ -311,12 +311,11 @@ namespace yupisoft.ConfigServer.Core.Services
             return hosts[0];
         }
 
-        private DNSQueryClassification CheckQuery(string[] parts)
+        private DNSQueryClassification CheckQuery(DomainName domain)
         {
-            if (parts == null) throw new ArgumentNullException("Parts can not be null.");
-            if (parts.Length < 2) throw new ArgumentException("Three parts expected.");
-            var part1 = parts[parts.Length - 2];
-            var part2 = (parts.Length > 2) ? parts[parts.Length - 3] : "";
+            var parts = domain.Labels;
+            var part1 = parts[parts.Length - 1];
+            var part2 = (parts.Length > 1) ? parts[parts.Length - 2] : "";
             if ((part1 == "node") || (part2 == "node")) return DNSQueryClassification.Node;
             if ((part1 == "nodes") || (part2 == "nodes")) return DNSQueryClassification.Nodes;
             if ((part1 == "service") || (part2 == "service")) return DNSQueryClassification.Service;
@@ -336,22 +335,34 @@ namespace yupisoft.ConfigServer.Core.Services
             {
                 // send query to upstream server
                 DnsQuestion question = message.Questions[0];
-                string labels = string.Join(".", question.Name.Labels);
+                string labels = question.Name.ToString();
                 _logger.LogTrace("DNS: query: " + labels);
 
                 DnsMessage response = message.CreateResponseInstance();
                 response.EDnsOptions = null;
 
-
                 if (question.Name.Labels.Length < 2)
                 {
-                    _logger.LogTrace("DNS: Invalid query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                    _logger.LogTrace("DNS: Invalid query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                     NoResponse(response, eventArgs);
                     return;
                 }
 
-                if (question.Name.Labels[question.Name.Labels.Length - 1] == _config.Mainzone.Trim('.'))
+                if (question.Name.IsSubDomainOf(DomainName.Parse(_config.Mainzone.Trim('.'))))
                 {
+                    DomainName domainMainZone = DomainName.Parse(_config.Mainzone.Trim('.'));
+                    DomainName workingDomain = new DomainName(question.Name.Labels.Take(question.Name.LabelCount - domainMainZone.LabelCount).ToArray());
+
+                    if ((workingDomain.Labels[workingDomain.LabelCount - 1].ToLower() != "service")
+                     && (workingDomain.Labels[workingDomain.LabelCount - 1].ToLower() != "node")
+                     && (workingDomain.Labels[workingDomain.LabelCount - 1].ToLower() != "addr")
+                     && (workingDomain.Labels[workingDomain.LabelCount - 1].ToLower() != "nodes")
+                     && (workingDomain.Labels[workingDomain.LabelCount - 1].ToLower() != _clusterMan.DataCenterId.ToLower()))
+                     {
+                         _logger.LogTrace("DNS: No this datacenter, not found for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
+                         NoResponse(response, eventArgs);
+                         return;
+                     }
 
                     #region Register all the addresses
                     foreach (var node in _clusterMan.Nodes)
@@ -390,37 +401,29 @@ namespace yupisoft.ConfigServer.Core.Services
                     #endregion
 
                     #region IF Query Type: .node[.datacenter].<domain>
-                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Node)
+                    if (CheckQuery(workingDomain) == DNSQueryClassification.Node)
                     {
                         // <node>.node[.datacenter].<domain>
                         // lan.<node>.node[.datacenter].<domain>
                         // wan.<node>.node[.datacenter].<domain>
 
-                        int ind = Array.LastIndexOf(question.Name.Labels, "node");
+                        int ind = Array.LastIndexOf(workingDomain.Labels, "node");
                         if (ind == 0)
                         {
-                            _logger.LogWarning("DNS: Invalid query, missing node for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogWarning("DNS: Invalid query, missing node for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
-                        string nodeId = question.Name.Labels[ind - 1];
+                        string nodeId = workingDomain.Labels[ind - 1];
                         var node = _clusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId && n.Mode == Node.NodeMode.Server && n.Active && n.LastCheckActive);
                         if (node == null)
                         {
-                            _logger.LogWarning("DNS: Node: " + nodeId + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogWarning("DNS: Node: " + nodeId + " not found for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
                         // Check DatacenterName
-                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
-                        {
-                            _logger.LogTrace("DNS: No this datacenter, node: " + nodeId + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
-                            NoResponse(response, eventArgs);
-                            return;
-                        }
+
                         var lanEndpoint = Parse(new Uri(node.Uri).Authority, 80);
                         var wanEndpoint = Parse(new Uri(node.WANUri).Authority, 80);
                         var nAddress = lanEndpoint;
@@ -428,9 +431,9 @@ namespace yupisoft.ConfigServer.Core.Services
                         {
                             // lan.<node>.node[.datacenter].<domain>
                             // wan.<node>.node[.datacenter].<domain>
-                            if (!string.IsNullOrEmpty(question.Name.Labels[ind - 2]))
+                            if (!string.IsNullOrEmpty(workingDomain.Labels[ind - 2]))
                             {
-                                string wanOrlan = question.Name.Labels[ind - 2];
+                                string wanOrlan = workingDomain.Labels[ind - 2];
                                 if (wanOrlan.ToLower() == "wan") nAddress = wanEndpoint;
                             }
                         }
@@ -457,7 +460,7 @@ namespace yupisoft.ConfigServer.Core.Services
                                 }
                                 else
                                 {
-                                    _logger.LogTrace("DNS: Can not find Target address for IP: " + nAddress.Address.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                    _logger.LogTrace("DNS: Can not find Target address for IP: " + nAddress.Address.ToString() + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                                 }
                                 response.IsAuthoritiveAnswer = true;
                                 eventArgs.Response = response;
@@ -465,14 +468,14 @@ namespace yupisoft.ConfigServer.Core.Services
                             }
                             else
                             {
-                                _logger.LogTrace("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                _logger.LogTrace("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                                 NoResponse(response, eventArgs);
                                 return;
                             }
                         }
                         else
                         {
-                            _logger.LogTrace("DNS: Invalid IP Address: " + nAddress + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogTrace("DNS: Invalid IP Address: " + nAddress + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
@@ -482,25 +485,13 @@ namespace yupisoft.ConfigServer.Core.Services
                     else
 
                     #region IF Query Type: nodes[.datacenter].<domain>
-                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Nodes)
+                    if (CheckQuery(question.Name) == DNSQueryClassification.Nodes)
                     {
                         // nodes[.datacenter].<domain>
                         // lan.nodes[.datacenter].<domain>
                         // wan.nodes[.datacenter].<domain>
 
-                        int ind = Array.LastIndexOf(question.Name.Labels, "nodes");
-
-                        // Check DatacenterName
-                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "nodes")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
-                        {
-                            _logger.LogTrace("DNS: No this datacenter for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
-                            NoResponse(response, eventArgs);
-                            return;
-                        }
+                        int ind = Array.LastIndexOf(workingDomain.Labels, "nodes");
 
                         Node[] nodes = GetAllNodes();
 
@@ -513,9 +504,9 @@ namespace yupisoft.ConfigServer.Core.Services
                             {
                                 // lan.<node>.node[.datacenter].<domain>
                                 // wan.<node>.node[.datacenter].<domain>
-                                if (!string.IsNullOrEmpty(question.Name.Labels[ind - 1]))
+                                if (!string.IsNullOrEmpty(workingDomain.Labels[ind - 1]))
                                 {
-                                    string wanOrlan = question.Name.Labels[ind - 1];
+                                    string wanOrlan = workingDomain.Labels[ind - 1];
                                     if (wanOrlan.ToLower() == "wan") nAddress = wanEndpoint;
                                 }
                             }
@@ -539,19 +530,19 @@ namespace yupisoft.ConfigServer.Core.Services
                                     }
                                     else
                                     {
-                                        _logger.LogTrace("DNS: Can not find Target address for IP: " + nAddress.Address.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                        _logger.LogTrace("DNS: Can not find Target address for IP: " + nAddress.Address.ToString() + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                                     }
                                 }
                                 else
                                 {
-                                    _logger.LogTrace("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                    _logger.LogTrace("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                                     NoResponse(response, eventArgs);
                                     return;
                                 }
                             }
                             else
                             {
-                                _logger.LogTrace("DNS: Invalid IP Address: " + nAddress + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                _logger.LogTrace("DNS: Invalid IP Address: " + nAddress + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             }
                         }
                         response.IsAuthoritiveAnswer = true;
@@ -563,13 +554,13 @@ namespace yupisoft.ConfigServer.Core.Services
                     else
 
                     #region IF Query Type: .service[.datacenter].<domain>
-                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Service)
+                    if (CheckQuery(workingDomain) == DNSQueryClassification.Service)
                     {
 
-                        int ind = Array.LastIndexOf(question.Name.Labels, "service");
+                        int ind = Array.LastIndexOf(workingDomain.Labels, "service");
                         if (ind == 0)
                         {
-                            _logger.LogWarning("DNS: Invalid query, missing service for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogWarning("DNS: Invalid query, missing service for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
@@ -580,10 +571,10 @@ namespace yupisoft.ConfigServer.Core.Services
 
                         string serviceName = "";
                         string tag = "";
-                        string part1 = question.Name.Labels[ind - 1];
+                        string part1 = workingDomain.Labels[ind - 1];
                         string part2 = "";
                         if (ind - 1 != 0)
-                            part2 = question.Name.Labels[ind - 2];
+                            part2 = workingDomain.Labels[ind - 2];
 
                         if (part1.StartsWith("_") && part2.StartsWith("_"))
                         {
@@ -596,20 +587,10 @@ namespace yupisoft.ConfigServer.Core.Services
                             tag = part2;
                         }
 
-                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
-                        {
-                            _logger.LogTrace("DNS: No this datacenter, service: " + serviceName + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
-                            NoResponse(response, eventArgs);
-                            return;
-                        }
-
                         var services = GetService(serviceName, tag, eventArgs.RemoteEndpoint.Address.ToString());
                         if ((services == null) || (services.Length == 0))
                         {
-                            _logger.LogWarning("DNS: Service: " + serviceName + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogWarning("DNS: Service: " + serviceName + " not found for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
@@ -643,17 +624,17 @@ namespace yupisoft.ConfigServer.Core.Services
                                     }
                                     else
                                     {
-                                        _logger.LogTrace("DNS: Can not find Target address for IP: " + service.Address + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                        _logger.LogTrace("DNS: Can not find Target address for IP: " + service.Address + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                                     }                                    
                                 }
                                 else
                                 {
-                                    _logger.LogWarning("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                    _logger.LogWarning("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                                 }
                             }
                             else
                             {
-                                _logger.LogWarning("DNS: Service: " + serviceName + ", invalid IP Address: " + service.Address + " for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                _logger.LogWarning("DNS: Service: " + serviceName + ", invalid IP Address: " + service.Address + " for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             }
                             priority++;
                         }
@@ -666,33 +647,22 @@ namespace yupisoft.ConfigServer.Core.Services
                     else
 
                     #region IF Query Type: .addr[.datacenter].<domain>
-                    if (CheckQuery(question.Name.Labels) == DNSQueryClassification.Address)
+                    if (CheckQuery(workingDomain) == DNSQueryClassification.Address)
                     {
                         // <addr>.addr[.datacenter].<domain>
 
-                        int ind = Array.LastIndexOf(question.Name.Labels, "addr");
+                        int ind = Array.LastIndexOf(workingDomain.Labels, "addr");
                         if (ind == 0)
                         {
-                            _logger.LogWarning("DNS: Invalid query, missing addr for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogWarning("DNS: Invalid query, missing addr for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
-                        string addr = question.Name.Labels[ind - 1].ToLower();
+                        string addr = workingDomain.Labels[ind - 1].ToLower();
 
                         if (!_knownAddresses.ContainsValue(addr))
                         {
-                            _logger.LogWarning("DNS: Addr: " + addr + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
-                            NoResponse(response, eventArgs);
-                            return;
-                        }
-
-                        // Check DatacenterName
-                        if ((question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "service")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "node")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != "addr")
-                            && (question.Name.Labels[question.Name.Labels.Length - 2].ToLower() != _clusterMan.DataCenterId.ToLower()))
-                        {
-                            _logger.LogTrace("DNS: No this datacenter, addr: " + addr + " not found for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogWarning("DNS: Addr: " + addr + " not found for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
@@ -711,14 +681,14 @@ namespace yupisoft.ConfigServer.Core.Services
                             }
                             else
                             {
-                                _logger.LogWarning("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                                _logger.LogWarning("DNS: Invalid Question Type: " + question.RecordType.ToString() + ", for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                                 NoResponse(response, eventArgs);
                                 return;
                             }
                         }
                         else
                         {
-                            _logger.LogError("DNS: Invalid IP Address: " + knownaddr.Key + " (Internal Pool), for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                            _logger.LogError("DNS: Invalid IP Address: " + knownaddr.Key + " (Internal Pool), for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
                             NoResponse(response, eventArgs);
                             return;
                         }
@@ -731,7 +701,7 @@ namespace yupisoft.ConfigServer.Core.Services
                 else
                     if (_config.FordwardingEnabled)
                 {
-                    _logger.LogTrace("DNS: Forwarding for query: " + string.Join(".", question.Name.Labels) + "(" + question.RecordType.ToString() + ")");
+                    _logger.LogTrace("DNS: Forwarding for query: " + question.Name.ToString() + "(" + question.RecordType.ToString() + ")");
 
                     DnsMessage upstreamResponse = await DnsClient.Default.ResolveAsync(question.Name, question.RecordType, question.RecordClass);
 

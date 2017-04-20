@@ -6,7 +6,7 @@
     },
     "newobject": {
       "$inherits": "*configuration.baseobject",
-      "field0": "value0Xa",
+      "field0": "value0Xb",
       "field1": "value1XY",
       "field2": "value2XY",
       "array": [
@@ -16,7 +16,7 @@
       ]
     },
     "baseobject": {
-      "field0": "value0X",
+      "field0": "value1X",
       "fieldB": "valueB"
     },
     "hooks": {
@@ -25,14 +25,26 @@
         "Id": "h1",
         "Description": "",
         "node": "configuration.baseobject.field0",
-        "http": "http://localhost/datachange"
+        "Notifications": [
+          {
+            "Id": "http-01",
+            "Name": "Http Notification",
+            "http": "http://localhost/datachange"
+          }
+        ]        
       },
       "hook.change02": {
         "$hook": "$datachange",
         "Id": "h2",
         "Description": "",
         "node": "configuration.services",
-        "http": "http://localhost/datachange"
+        "Notifications": [
+          {
+            "Id": "http-01",
+            "Name": "Http Notification",
+            "http": "http://localhost/datachange"
+          }
+        ]
       }
     },
     "services": {

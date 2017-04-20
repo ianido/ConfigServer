@@ -330,7 +330,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
                         _logger.LogTrace(req.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") --> " + node.Id + ".");
 
                     selfNode.InUse = true;
-                    client.PostAsync(node.Uri + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey, _clusterSecurity.Encrypted).ContinueWith((a) =>
+                    string uri = (node.DataCenter != selfNode.DataCenter) ? node.WANUri : node.Uri;
+                    client.PostAsync(uri + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey, _clusterSecurity.Encrypted).ContinueWith((a) =>
                     {
                         lock (node)
                         {

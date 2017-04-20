@@ -6,7 +6,11 @@ namespace yupisoft.ConfigServer.Core.Hooks
 {
     public enum HookCheckStatus
     {
-        Notify,
         Iddle,
+        ChangeItem,
+        DeleteItem,
+        AddedItem,
+        ChangeStatus,
+        Notify
     }
 }

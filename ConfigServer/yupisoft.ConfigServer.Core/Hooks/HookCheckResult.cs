@@ -1,13 +1,19 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using yupisoft.ConfigServer.Core.Utils;
 
 namespace yupisoft.ConfigServer.Core.Hooks
 {
-    public class HookCheckResult
+    public class HookCheckResult : IHookCheckResult
     {
-        public string CheckerId { get; set; }
+        public string HookId { get; set; }
+        public JToken Data { get; set; }
         public HookCheckStatus Result  { get; set; }
+        public HookCheckResult()
+        {
+            Result = HookCheckStatus.Iddle;
+        }
     }
 }
