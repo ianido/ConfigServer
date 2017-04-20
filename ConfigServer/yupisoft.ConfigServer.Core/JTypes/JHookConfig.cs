@@ -27,9 +27,10 @@ namespace yupisoft.ConfigServer.Core
         {
             get
             {
-                if (Type == "$nodechange")
+                if (Type == "$datanode.change")
                     return JHookCheckType.DataNodeChange;
-
+                if (Type == "$servicestatus.change")
+                    return JHookCheckType.ServiceStatusChange;
                 return JHookCheckType.Unknow;
             }
         }

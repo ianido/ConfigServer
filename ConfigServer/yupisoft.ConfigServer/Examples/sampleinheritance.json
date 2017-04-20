@@ -21,7 +21,7 @@
     },
     "hooks": {
       "hook.change01": {
-        "$hook": "$datachange",
+        "$hook": "$datanode.change",
         "Id": "h1",
         "Description": "",
         "node": "configuration.baseobject.field0",
@@ -34,7 +34,7 @@
         ]        
       },
       "hook.change02": {
-        "$hook": "$datachange",
+        "$hook": "$servicestatus.change",
         "Id": "h2",
         "Description": "",
         "node": "configuration.services",
