@@ -54,7 +54,7 @@ namespace yupisoft.ConfigServer.Core.Services
             }
         }
 
-        protected ServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger)
+        protected ServiceCheck(JServiceCheckConfig checkConfig, ILogger logger)
         {
             _checkConfig = checkConfig;
             _lastCheckStatus = ServiceCheckStatus.Nocheck;
@@ -66,13 +66,21 @@ namespace yupisoft.ConfigServer.Core.Services
             if (checkConfig.CheckType == JServiceCheckType.Http) return new HttpServiceCheck(checkConfig, serviceConfig, logger);
             if (checkConfig.CheckType == JServiceCheckType.Script) return new ScriptServiceCheck(checkConfig, serviceConfig, logger);
             if (checkConfig.CheckType == JServiceCheckType.Tcp) return new TcpServiceCheck(checkConfig, serviceConfig, logger);
-            throw new Exception("Cant create a check type.");
+            logger.LogWarning("Cant Create a Service Check type:" + checkConfig.CheckType.ToString());
+            return null;
         }
         public ServiceCheckStatus LastCheckStatus { get { return _lastCheckStatus; } }
         public void Check()
         {
-            if ((DateTime.UtcNow - _lastChecked) > Interval) { OnCheckStarted(Id); CheckAsync(); _lastChecked = DateTime.UtcNow; }
-            if ((DateTime.UtcNow - _lastChecked) > Ttl) { _lastCheckStatus = ServiceCheckStatus.Failing; }
+            try
+            {
+                if ((DateTime.UtcNow - _lastChecked) > Interval) { OnCheckStarted(Id); CheckAsync(); _lastChecked = DateTime.UtcNow; }
+                if ((DateTime.UtcNow - _lastChecked) > Ttl) { _lastCheckStatus = ServiceCheckStatus.Failing; }
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError("ServiceCheck: Exception performing the check(" + Id +"). Message:" + ex.ToString());
+            }
         }
         protected abstract void CheckAsync();
     }

@@ -6,7 +6,9 @@ namespace yupisoft.ConfigServer.Core
 {
     public enum JHookCheckType
     {
-        DataNodeChange
+        DataNodeChange,
+        ServiceStatusChange,
+        Unknow
     }
     public class JHookConfig
     {        
@@ -15,9 +17,9 @@ namespace yupisoft.ConfigServer.Core
         public string Type { get; set; }
         public string Description { get; set; }
         public string Node { get; set; }
+        public string ServiceName { get; set; }
+        public string NotifyOn { get; set; }
         public JHookNotificationConfig[] Notifications { get; set; }
-        public string Http { get; set; }
-        public string HttpMethod { get; set; }
         public string Interval { get; set; }
         public string Timeout { get; set; }
 
@@ -28,13 +30,13 @@ namespace yupisoft.ConfigServer.Core
                 if (Type == "$nodechange")
                     return JHookCheckType.DataNodeChange;
 
-                return JHookCheckType.DataNodeChange;
+                return JHookCheckType.Unknow;
             }
         }
 
         public JHookConfig()
         {
-            HttpMethod = "post";
+
             Interval = "10s";
             Timeout = "2s";
         }

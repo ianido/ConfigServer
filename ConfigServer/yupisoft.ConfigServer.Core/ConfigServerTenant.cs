@@ -147,8 +147,12 @@ namespace yupisoft.ConfigServer.Core
                     }
                     else
                     {
-                        Hooks.Add(hook.Id, Hook.CreateHook(hook, _logger, this));
-                        _logger.LogTrace("Registering Hook " + hook.HookType + "(" + hook.Id + ")");
+                        var h = Hook.CreateHook(hook, _logger, this);
+                        if (h != null)
+                        {
+                            Hooks.Add(hook.Id, h);
+                            _logger.LogTrace("Registering Hook " + hook.HookType + "(" + hook.Id + ")");
+                        }
                     }
                 }
 

@@ -12,20 +12,21 @@ namespace yupisoft.ConfigServer.Core.Services
     {
 
         private object _lock = new object();
+        private JServiceConfig _serviceConfig;
 
-        public HttpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, serviceConfig, logger)
+        public HttpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, logger)
         {
-            _checkConfig = checkConfig;
-            _checkConfig.Http = _checkConfig.Http.Replace("$address", serviceConfig.Address);
-            _checkConfig.Http = _checkConfig.Http.Replace("$port", serviceConfig.Port.ToString());
+            _serviceConfig = serviceConfig;
         }
 
         protected override void CheckAsync()
         {
-            //_logger.LogTrace("HttpServiceCheck: CheckAsync.");
+            string http = _checkConfig.Http;
+            http = http.Replace("$address", _serviceConfig.Address);
+            http = http.Replace("$port", _serviceConfig.Port.ToString());
             HttpClient client = new HttpClient();
             client.Timeout = Timeout;
-            client.GetAsync(_checkConfig.Http).ContinueWith((a) =>
+            client.GetAsync(http).ContinueWith((a) =>
             {
                 lock (_lock)
                 {

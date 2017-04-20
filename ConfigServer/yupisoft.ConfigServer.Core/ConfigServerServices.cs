@@ -82,9 +82,16 @@ namespace yupisoft.ConfigServer.Core
                 {
                     foreach (var tenant in _tenants.Tenants)
                     {
-                        foreach (var service in tenant.Services)
+                        try
                         {
-                            service.Value.Check();
+                            foreach (var service in tenant.Services)
+                            {
+                                service.Value.Check();
+                            }
+                        }
+                        catch(Exception ex)
+                        {
+                            _logger.LogError("Exception running Checks for tenant: " + tenant.Id + ". Message: " +ex.ToString());
                         }
                     }
                 }

@@ -13,21 +13,27 @@ namespace yupisoft.ConfigServer.Core.Services
     {
         
         private object _lock = new object();
+        private JServiceConfig _serviceConfig;
 
-        public TcpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, serviceConfig, logger)
+        public TcpServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, logger)
         {
-            _checkConfig = checkConfig;
-            _checkConfig.Tcp = _checkConfig.Tcp.Replace("$address", serviceConfig.Address);
-            _checkConfig.Tcp = _checkConfig.Tcp.Replace("$port", serviceConfig.Port.ToString());
+            _serviceConfig = serviceConfig;
         }
 
 
         protected override void CheckAsync()
         {
-            //_logger.LogTrace("TcpServiceCheck: CheckAsync.");
+            string tcp = _checkConfig.Tcp;
+            tcp = tcp.Replace("$address", _serviceConfig.Address);
+            tcp = tcp.Replace("$port", _serviceConfig.Port.ToString());
+
             TcpClient client = new TcpClient();
-            var addr = _checkConfig.Tcp.Split(':');
-            if (addr.Length < 2) throw new Exception("Tcp address needs a port.");
+            var addr = tcp.Split(':');
+            if (addr.Length < 2)
+            {
+                _logger.LogWarning("Cant perform TCP Check("+ Id +") - TCP Address needs a port.");
+                return;
+            }
             client.ConnectAsync(IPAddress.Parse(addr[0]), int.Parse(addr[1])).ContinueWith((a) =>
             {
                 lock (_lock)

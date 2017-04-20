@@ -9,7 +9,8 @@ namespace yupisoft.ConfigServer.Core
     {
         Http,
         Script,
-        Email
+        Email,
+        Unknow
     }
     public class JHookNotificationConfig
     {
@@ -19,6 +20,12 @@ namespace yupisoft.ConfigServer.Core
         public string Http { get; set; }
         public string HttpMethod { get; set; }
         public string Email { get; set; }
+        public string EmailFrom { get; set; }
+        public string SMTP { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public bool EmailUseSSL { get; set; }
+        public string EmailSubject { get; set; }
         public string Script { get; set; }
         public string Notes { get; set; }
 
@@ -30,7 +37,9 @@ namespace yupisoft.ConfigServer.Core
                     return JHookNotificationType.Email;
                 if (!string.IsNullOrEmpty(Script))
                     return JHookNotificationType.Script;
-                return JHookNotificationType.Http;
+                if (!string.IsNullOrEmpty(Http))
+                    return JHookNotificationType.Http;
+                return JHookNotificationType.Unknow;
             }
         }
 

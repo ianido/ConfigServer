@@ -9,7 +9,8 @@ namespace yupisoft.ConfigServer.Core
     {
         Tcp,
         Http,
-        Script
+        Script,
+        Unknow
     }
     public class JServiceCheckConfig
     {
@@ -33,7 +34,9 @@ namespace yupisoft.ConfigServer.Core
                     return JServiceCheckType.Tcp;
                 if (!string.IsNullOrEmpty(Script))
                     return JServiceCheckType.Script;
-                return JServiceCheckType.Http;
+                if (!string.IsNullOrEmpty(Http))
+                    return JServiceCheckType.Http;
+                return JServiceCheckType.Unknow;
             }
         }
 

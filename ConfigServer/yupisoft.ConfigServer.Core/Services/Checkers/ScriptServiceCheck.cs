@@ -14,20 +14,23 @@ namespace yupisoft.ConfigServer.Core.Services
     public class ScriptServiceCheck : ServiceCheck
     {       
         private object _locking = new object();
+        private JServiceConfig _serviceConfig;
 
-        public ScriptServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, serviceConfig, logger)
+        public ScriptServiceCheck(JServiceCheckConfig checkConfig, JServiceConfig serviceConfig, ILogger logger) : base(checkConfig, logger)
         {
-            _checkConfig = checkConfig; 
-            _checkConfig.Script = _checkConfig.Script.Replace("$appdir", Directory.GetCurrentDirectory());
-            _checkConfig.Script = _checkConfig.Script.Replace("$basedir", Directory.GetCurrentDirectory());
-            _checkConfig.Script = _checkConfig.Script.Replace("$address", serviceConfig.Address);
-            _checkConfig.Script = _checkConfig.Script.Replace("$port", serviceConfig.Port.ToString());
+            _serviceConfig = serviceConfig;
         }
 
         protected override void CheckAsync()
         {
+            var script = _checkConfig.Script;
+            script = script.Replace("$appdir", Directory.GetCurrentDirectory());
+            script = script.Replace("$basedir", Directory.GetCurrentDirectory());
+            script = script.Replace("$address", _serviceConfig.Address);
+            script = script.Replace("$port", _serviceConfig.Port.ToString());
+
             Task.Factory.StartNew(() => {
-                Process proc = Process.Start(_checkConfig.Script);
+                Process proc = Process.Start(script);
                 proc.WaitForExit(Convert.ToInt32(Timeout.TotalMilliseconds));
                 if (proc.ExitCode == 0)
                     _lastCheckStatus = ServiceCheckStatus.Passing;

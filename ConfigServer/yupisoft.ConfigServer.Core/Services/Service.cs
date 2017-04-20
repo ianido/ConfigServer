@@ -125,13 +125,16 @@ namespace yupisoft.ConfigServer.Core.Services
             {
                 if (check.Disabled) continue;
                 var sc = ServiceCheck.CreateFromConfig(check, config, logger);
-                sc.CheckDone += Sc_CheckDone;
-                sc.CheckStarted += Sc_CheckStarted;
-                lchecks.Add(sc);
-                ServiceCheckResult res = new ServiceCheckResult();
-                res.Result = ServiceCheckStatus.Iddle;
-                res.CheckerId = check.Id;
-                CheckResults.Add(res);
+                if (sc != null)
+                {
+                    sc.CheckDone += Sc_CheckDone;
+                    sc.CheckStarted += Sc_CheckStarted;
+                    lchecks.Add(sc);
+                    ServiceCheckResult res = new ServiceCheckResult();
+                    res.Result = ServiceCheckStatus.Iddle;
+                    res.CheckerId = check.Id;
+                    CheckResults.Add(res);
+                }
             }
             Checks = lchecks.ToArray();           
         }

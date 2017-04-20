@@ -15,14 +15,12 @@ namespace yupisoft.ConfigServer.Core.Hooks
 
     public abstract class Hook 
     {
-        protected object _sync1 = new object();
+        protected object _sync = new object();
         protected ILogger _logger;
         protected HookCheckStatus _lastCheckStatus;
         protected DateTime _lastChecked = DateTime.UtcNow;
         protected List<IHookNotification> Notifications;
-
-        public event CheckDoneEventHandler CheckDone;
-        public event CheckStartedEventHandler CheckStarted;
+        protected JHookConfig Config { get; private set; }
 
         public string Id { get { return Config.Id; } }
         public string Description { get { return Config.Description; } }
@@ -40,8 +38,9 @@ namespace yupisoft.ConfigServer.Core.Hooks
                 return ConverterExtensions.ParseHuman(Config.Timeout);
             }
         }
-        protected JHookConfig Config { get; private set; }
 
+        public event CheckDoneEventHandler CheckDone;
+        public event CheckStartedEventHandler CheckStarted;
 
         protected virtual void OnCheckDone(HookCheckStatus status)
         {
@@ -61,14 +60,17 @@ namespace yupisoft.ConfigServer.Core.Hooks
             {
                 if (notification.Disabled) continue;
                 var not = HookNotification.CreateFromConfig(notification, logger);
-                Notifications.Add(not);
+                if (not != null)
+                    Notifications.Add(not);
             }
         }
 
         public static Hook CreateHook(JHookConfig config, ILogger logger, ConfigServerTenant tenant)
         {            
             if (config.HookType == JHookCheckType.DataNodeChange) return new HookDataNodeChange(config, logger, tenant);
-             else throw new Exception("Cant create a check type.");
+            if (config.HookType == JHookCheckType.ServiceStatusChange) return new HookServiceStatusChange(config, logger, tenant);
+            logger.LogWarning("Cant Create a Hook type:" + config.HookType.ToString());
+            return null;
         }
 
         protected abstract Task<IHookCheckResult> CheckAsync();

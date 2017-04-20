@@ -29,9 +29,10 @@ namespace yupisoft.ConfigServer.Core.Hooks
         public static HookNotification CreateFromConfig(JHookNotificationConfig notConfig, ILogger logger)
         {
             if (notConfig.CheckType == JHookNotificationType.Http) return new HttpHookNotification(notConfig, logger);
-            //if (notConfig.CheckType == JHookNotificationType.Script) return new ScriptHookNotification(notConfig, logger);
-            //if (notConfig.CheckType == JHookNotificationType.Email) return new EmailHookNotification(notConfig, logger);
-            throw new Exception("Cant create a notification type.");
+            if (notConfig.CheckType == JHookNotificationType.Script) return new ScriptHookNotification(notConfig, logger);
+            if (notConfig.CheckType == JHookNotificationType.Email) return new MailHookNotification(notConfig, logger);
+            logger.LogWarning("Cant Create a Hook Notification type:" + notConfig.CheckType.ToString());
+            return null;
         }
 
         public abstract void Notify(IHookCheckResult checkResults);

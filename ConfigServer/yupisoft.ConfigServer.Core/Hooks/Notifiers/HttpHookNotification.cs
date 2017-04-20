@@ -33,15 +33,18 @@ namespace yupisoft.ConfigServer.Core.Hooks
             await client.SendAsync(request).ContinueWith((a) =>
             {
                 HookNotificationResponse res = new HookNotificationResponse();
+                res.NotificationId = Id;
                 if ((a.Status == System.Threading.Tasks.TaskStatus.RanToCompletion) && (a.Result.IsSuccessStatusCode))
                 {
                     res.Data = a.Result.Content.ReadAsStringAsync().Result;
-                    res.NotificationId = Id;
                     res.Result = HookNotificationResult.Success;
                     _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") StatusCode: " + a.Result.StatusCode);
                 }
                 else
+                {
+                    res.Result = HookNotificationResult.Error;
                     _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Task Failed: " + a.Status);
+                }
                 OnNotificationDone(Id, res);
             });
         }

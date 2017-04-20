@@ -8,6 +8,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using yupisoft.ConfigServer.Core.Cluster;
+using yupisoft.ConfigServer.Core.Utils;
 
 namespace yupisoft.ConfigServer.Core.Services
 {
@@ -209,108 +210,6 @@ namespace yupisoft.ConfigServer.Core.Services
             return returnedNodes.ToArray();
         }
 
-        private string IPtoHex(string ip)
-        {
-            string hex = "";
-            try
-            {
-                foreach (var part in ip.Split('.'))
-                    hex += int.Parse(part).ToString("X");
-            }
-            catch 
-            {
-                _logger.LogTrace("DNS: Invalid IP Address: " + ip);
-            }
-            return hex.ToLower();
-        }
-
-        private static IPEndPoint Parse(string endpointstring)
-        {
-            return Parse(endpointstring, -1);
-        }
-
-        private static IPEndPoint Parse(string endpointstring, int defaultport)
-        {
-            if (string.IsNullOrEmpty(endpointstring)
-                || endpointstring.Trim().Length == 0)
-            {
-                throw new ArgumentException("Endpoint descriptor may not be empty.");
-            }
-
-            if (defaultport != -1 &&
-                (defaultport < IPEndPoint.MinPort
-                || defaultport > IPEndPoint.MaxPort))
-            {
-                throw new ArgumentException(string.Format("Invalid default port '{0}'", defaultport));
-            }
-
-            string[] values = endpointstring.Split(new char[] { ':' });
-            IPAddress ipaddy;
-            int port = -1;
-
-            //check if we have an IPv6 or ports
-            if (values.Length <= 2) // ipv4 or hostname
-            {
-                if (values.Length == 1)
-                    //no port is specified, default
-                    port = defaultport;
-                else
-                    port = getPort(values[1]);
-
-                //try to use the address as IPv4, otherwise get hostname
-                if (!IPAddress.TryParse(values[0], out ipaddy))
-                    ipaddy = getIPfromHost(values[0]).Result;
-            }
-            else if (values.Length > 2) //ipv6
-            {
-                //could [a:b:c]:d
-                if (values[0].StartsWith("[") && values[values.Length - 2].EndsWith("]"))
-                {
-                    string ipaddressstring = string.Join(":", values.Take(values.Length - 1).ToArray());
-                    ipaddy = IPAddress.Parse(ipaddressstring);
-                    port = getPort(values[values.Length - 1]);
-                }
-                else //[a:b:c] or a:b:c
-                {
-                    ipaddy = IPAddress.Parse(endpointstring);
-                    port = defaultport;
-                }
-            }
-            else
-            {
-                throw new FormatException(string.Format("Invalid endpoint ipaddress '{0}'", endpointstring));
-            }
-
-            if (port == -1)
-                throw new ArgumentException(string.Format("No port specified: '{0}'", endpointstring));
-
-            return new IPEndPoint(ipaddy, port);
-        }
-
-        private static int getPort(string p)
-        {
-            int port;
-
-            if (!int.TryParse(p, out port)
-             || port < IPEndPoint.MinPort
-             || port > IPEndPoint.MaxPort)
-            {
-                throw new FormatException(string.Format("Invalid end point port '{0}'", p));
-            }
-
-            return port;
-        }
-
-        private static async Task<IPAddress> getIPfromHost(string p)
-        {
-            var hosts = await Dns.GetHostAddressesAsync(p);
-
-            if (hosts == null || hosts.Length == 0)
-                throw new ArgumentException(string.Format("Host not found: {0}", p));
-
-            return hosts[0];
-        }
-
         private DNSQueryClassification CheckQuery(DomainName domain)
         {
             var parts = domain.Labels;
@@ -372,13 +271,13 @@ namespace yupisoft.ConfigServer.Core.Services
                             lock (_knownAddresses)
                             {
                                 if (node.Mode == Node.NodeMode.Client) continue;
-                                var lanEndpoint = Parse(new Uri(node.Uri).Authority, 80);
-                                var wanEndpoint = Parse(new Uri(node.WANUri).Authority, 80);
+                                var lanEndpoint = IPUtils.Parse(new Uri(node.Uri).Authority, 80);
+                                var wanEndpoint = IPUtils.Parse(new Uri(node.WANUri).Authority, 80);
 
                                 if (!_knownAddresses.ContainsKey(lanEndpoint.Address.ToString()))
-                                    _knownAddresses.Add(lanEndpoint.Address.ToString(), IPtoHex(lanEndpoint.Address.ToString()));
+                                    _knownAddresses.Add(lanEndpoint.Address.ToString(), IPUtils.IPtoHex(lanEndpoint.Address.ToString()));
                                 if (!_knownAddresses.ContainsKey(wanEndpoint.Address.ToString()))
-                                    _knownAddresses.Add(wanEndpoint.Address.ToString(), IPtoHex(wanEndpoint.Address.ToString()));
+                                    _knownAddresses.Add(wanEndpoint.Address.ToString(), IPUtils.IPtoHex(wanEndpoint.Address.ToString()));
 
                             }
                         }
@@ -395,7 +294,7 @@ namespace yupisoft.ConfigServer.Core.Services
                                 lock (_knownAddresses)
                                 {
                                     if (!_knownAddresses.ContainsKey(service.Value.Address))
-                                        _knownAddresses.Add(service.Value.Address, IPtoHex(service.Value.Address));
+                                        _knownAddresses.Add(service.Value.Address, IPUtils.IPtoHex(service.Value.Address));
                                 }
                             }
                     #endregion
@@ -424,8 +323,8 @@ namespace yupisoft.ConfigServer.Core.Services
                         }
                         // Check DatacenterName
 
-                        var lanEndpoint = Parse(new Uri(node.Uri).Authority, 80);
-                        var wanEndpoint = Parse(new Uri(node.WANUri).Authority, 80);
+                        var lanEndpoint = IPUtils.Parse(new Uri(node.Uri).Authority, 80);
+                        var wanEndpoint = IPUtils.Parse(new Uri(node.WANUri).Authority, 80);
                         var nAddress = lanEndpoint;
                         if (ind - 1 != 0)
                         {
@@ -497,8 +396,8 @@ namespace yupisoft.ConfigServer.Core.Services
 
                         foreach (var node in nodes)
                         {
-                            var lanEndpoint = Parse(new Uri(node.Uri).Authority, 80);
-                            var wanEndpoint = Parse(new Uri(node.WANUri).Authority, 80);
+                            var lanEndpoint = IPUtils.Parse(new Uri(node.Uri).Authority, 80);
+                            var wanEndpoint = IPUtils.Parse(new Uri(node.WANUri).Authority, 80);
                             var nAddress = lanEndpoint;
                             if (ind != 0)
                             {
