@@ -63,6 +63,7 @@ namespace yupisoft.ConfigServer.Core
         public int DataCenterMaxInterval { get; set; }
         public int DataCenterMinInterval { get; set; }
         public int Interval { get; set; }
+        public int RndInterval { get; set; }
         public int MaxAttempts { get; set; }
         public int SkipAttemptsOnFail { get; set; }
         public int NodesLife { get; set; }
