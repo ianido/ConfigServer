@@ -10,7 +10,8 @@ namespace ConsoleApp6
         {
             Console.WriteLine("Press Enter to start");
             Console.ReadLine();
-            TestAsync.RunMethod();
+            //TestAsync.RunMethod();
+            TestMergeDiff.Method1();
             Console.WriteLine("Press Enter to exit");
             Console.ReadLine();
 

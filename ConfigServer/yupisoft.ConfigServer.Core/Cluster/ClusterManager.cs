@@ -74,7 +74,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
         }
 
-        private SelfNode selfNode
+        public SelfNode selfNode
         {
             get
             {
@@ -319,6 +319,11 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 {
                     _logger.LogTrace(req.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") --> X " + node.Id + "(InUse).");
                     return;
+                }                
+                if (node.SkipAttempts > 0)
+                {
+                    node.SkipAttempts--;
+                    return;
                 }
                 lock (selfNode)
                 {
@@ -328,11 +333,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
                         return;
                     }
                     selfNode.InUse = true;
-                }
-                if (node.SkipAttempts > 0)
-                {
-                    node.SkipAttempts--;
-                    return;
                 }
                 try
                 {
@@ -505,16 +505,17 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     return response;
                 }
             }
-            lock (node)
-            {
-                if (node.InUse)
+            if (node !=null)
+                lock (node)
                 {
-                    _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + "(InUse) Log(" + msg.LastLogId + ")");
-                    var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
-                    return response;
+                    if (node.InUse)
+                    {
+                        _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + "(InUse) Log(" + msg.LastLogId + ")");
+                        var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
+                        return response;
+                    }
+                    node.InUse = true;
                 }
-                node.InUse = true;
-            }
             try
             {
                 _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
@@ -562,10 +563,10 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
             finally
             {
-                lock (node)
-                {
-                    node.InUse = false;
-                }
+                if (node != null)
+                    lock (node)
+                        node.InUse = false;
+
             }
         }
 

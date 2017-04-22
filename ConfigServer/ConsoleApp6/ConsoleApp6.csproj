@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="JsonDiffPathDotNetCore" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\yupisoft.ConfigServer.Client\yupisoft.ConfigServer.Client.csproj" />
     <ProjectReference Include="..\yupisoft.ConfigServer.Core\yupisoft.ConfigServer.Core.csproj" />
   </ItemGroup>
