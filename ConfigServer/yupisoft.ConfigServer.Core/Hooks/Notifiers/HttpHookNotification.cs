@@ -28,7 +28,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
             if (HttpMethod.ToLower() == "delete") request = new HttpRequestMessage(System.Net.Http.HttpMethod.Delete, Http);
             var objData = JsonConvert.SerializeObject(checkResults, Formatting.None);
             request.Content = new StringContent(objData, Encoding.UTF8, "application/json");
-            _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Invoked.");
+            _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") Invoked.");
 
             await client.SendAsync(request).ContinueWith((a) =>
             {
@@ -38,12 +38,12 @@ namespace yupisoft.ConfigServer.Core.Hooks
                 {
                     res.Data = a.Result.Content.ReadAsStringAsync().Result;
                     res.Result = HookNotificationResult.Success;
-                    _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") StatusCode: " + a.Result.StatusCode);
+                    _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") StatusCode: " + a.Result.StatusCode);
                 }
                 else
                 {
                     res.Result = HookNotificationResult.Error;
-                    _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Task Failed: " + a.Status);
+                    _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") Task Failed: " + a.Status);
                 }
                 OnNotificationDone(Id, res);
             });

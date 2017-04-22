@@ -24,5 +24,42 @@ namespace yupisoft.ConfigServer.Core.Utils
             }
             return ts;
         }
+
+        public static string Human(this TimeSpan value)
+        {
+            string duration = "";
+
+            var totalDays = (int)value.TotalDays;
+            if (totalDays >= 1)
+            {
+                duration = totalDays + " d";
+                value = value.Add(TimeSpan.FromDays(-1 * totalDays));
+            }
+
+            var totalHours = (int)value.TotalHours;
+            if (totalHours >= 1)
+            {
+                if (!string.IsNullOrEmpty(duration)) duration += " ";
+                duration += totalHours + " h";
+                value = value.Add(TimeSpan.FromHours(-1 * totalHours));
+            }
+
+            var totalMinutes = (int)value.TotalMinutes;
+            if (totalMinutes >= 1)
+            {
+                if (!string.IsNullOrEmpty(duration)) duration += " ";
+                duration += totalMinutes + "m";
+                value = value.Add(TimeSpan.FromMinutes(-1 * totalMinutes));
+            }
+
+            var totalSeconds = (int)value.TotalSeconds;
+            if (totalSeconds >= 1)
+            {
+                if (!string.IsNullOrEmpty(duration)) duration += " ";
+                duration += totalSeconds + "s";
+            }
+
+            return duration;
+        }
     }
 }

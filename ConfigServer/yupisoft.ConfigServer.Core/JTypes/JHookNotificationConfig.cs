@@ -26,6 +26,7 @@ namespace yupisoft.ConfigServer.Core
         public string Password { get; set; }
         public bool EmailUseSSL { get; set; }
         public string EmailSubject { get; set; }
+        public string EmailBody { get; set; }
         public string Script { get; set; }
         public string Notes { get; set; }
 

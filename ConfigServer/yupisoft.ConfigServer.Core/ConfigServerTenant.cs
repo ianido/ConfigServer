@@ -323,7 +323,7 @@ namespace yupisoft.ConfigServer.Core
 
                 if (tenantId == null)
                 {
-                    _logger.LogTrace("<Null> TenantId found.");
+                    _logger.LogWarning("ApplyUpdate: <Null> TenantId found.");
                     continue;
                 }
                 ConfigServerTenant tenant = GetTenant(tenantId);

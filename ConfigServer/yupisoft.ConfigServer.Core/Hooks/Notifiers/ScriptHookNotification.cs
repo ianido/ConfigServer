@@ -24,7 +24,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
             string script = Script;
             script = script.Replace("$appdir", Directory.GetCurrentDirectory());
             script = script.Replace("$basedir", Directory.GetCurrentDirectory());
-            _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Invoked.");
+            _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") Invoked.");
             await Task.Factory.StartNew(() => {
                 Process proc = Process.Start(script);
                 proc.WaitForExit(5000);
@@ -34,11 +34,11 @@ namespace yupisoft.ConfigServer.Core.Hooks
                 {
                     res.Data = proc.StandardOutput?.ReadToEnd();
                     res.Result = HookNotificationResult.Success;
-                    _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") StatusCode: 0");
+                    _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") StatusCode: 0");
                 }
                 else
                 {
-                    _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Task Failed: ");
+                    _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") Task Failed: ");
                     res.Result = HookNotificationResult.Error;
                 }
                 OnNotificationDone(Id, res);

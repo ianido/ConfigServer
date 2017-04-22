@@ -37,7 +37,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
 
             JToken token = _Tenant.Token.SelectToken(this.Node);
             IHookCheckResult result = new HookCheckResult();
-            result.HookId = Id;
+            result.Hook = this;
 
             if (token == null)
             {                

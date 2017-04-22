@@ -34,7 +34,7 @@ namespace yupisoft.ConfigServer.Core.Services
                 _logger.LogWarning("Cant perform TCP Check("+ Id +") - TCP Address needs a port.");
                 return;
             }
-            client.ConnectAsync(IPAddress.Parse(addr[0]), int.Parse(addr[1])).ContinueWith((a) =>
+            client.ConnectAsync(addr[0], int.Parse(addr[1])).ContinueWith((a) =>
             {
                 lock (_lock)
                 {

@@ -21,6 +21,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
         public string Password { get { return _notificationConfig.Password; } }
         public bool EmailUseSSL { get { return _notificationConfig.EmailUseSSL; } }
         public string EmailSubject { get { return _notificationConfig.EmailSubject; } }
+        public string EmailBody { get { return _notificationConfig.EmailBody; } }
 
         public MailHookNotification(JHookNotificationConfig notificationConfig, ILogger logger) : base(notificationConfig, logger)
         {
@@ -29,17 +30,44 @@ namespace yupisoft.ConfigServer.Core.Hooks
         public override async void Notify(IHookCheckResult checkResults)
         {
             var objData = JsonConvert.SerializeObject(checkResults, Formatting.None);
-            _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Invoked.");
+            _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") Invoked.");
 
             var message = new MimeMessage();
             message.From.Add(MailboxAddress.Parse(EmailFrom));
             message.To.Add(MailboxAddress.Parse(Email));
-            message.Subject = EmailSubject ?? "Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Invoked.";
-            message.Subject = message.Subject.Replace("$hookid", checkResults.HookId);
+            message.Subject = EmailSubject ?? "Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") Invoked.";
+
+            message.Subject = message.Subject.Replace("$statusfrom", checkResults.Data["statusfrom"].Value<string>());
+            message.Subject = message.Subject.Replace("$statusto", checkResults.Data["statusto"].Value<string>());
+            message.Subject = message.Subject.Replace("$lastupdate", checkResults.Data["lastupdate"].Value<string>());
+            message.Subject = message.Subject.Replace("$prevupdate", checkResults.Data["prevupdate"].Value<string>());
+            message.Subject = message.Subject.Replace("$description", checkResults.Data["description"].Value<string>());
+            message.Subject = message.Subject.Replace("$servicename", checkResults.Data["servicename"].Value<string>());
+            message.Subject = message.Subject.Replace("$serviceid", checkResults.Data["serviceid"].Value<string>());
+            message.Subject = message.Subject.Replace("$timespan", checkResults.Data["timespan"].Value<string>());
+            message.Subject = message.Subject.Replace("$hookid", checkResults.Hook.Id);
             message.Subject = message.Subject.Replace("$checkerid", Id);
+
+            string bodyText = checkResults.Data.ToString(Formatting.Indented);
+
+            if (!string.IsNullOrEmpty(EmailBody)) {
+
+                bodyText = EmailBody;
+                bodyText = bodyText.Replace("$statusfrom", checkResults.Data["statusfrom"].Value<string>());
+                bodyText = bodyText.Replace("$statusto", checkResults.Data["statusto"].Value<string>());
+                bodyText = bodyText.Replace("$lastupdate", checkResults.Data["lastupdate"].Value<string>());
+                bodyText = bodyText.Replace("$prevupdate", checkResults.Data["prevupdate"].Value<string>());
+                bodyText = bodyText.Replace("$description", checkResults.Data["description"].Value<string>());
+                bodyText = bodyText.Replace("$servicename", checkResults.Data["servicename"].Value<string>());
+                bodyText = bodyText.Replace("$serviceid", checkResults.Data["serviceid"].Value<string>());
+                bodyText = bodyText.Replace("$timespan", checkResults.Data["timespan"].Value<string>());
+                bodyText = bodyText.Replace("$hookid", checkResults.Hook.Id);
+                bodyText = bodyText.Replace("$checkerid", Id);
+            }
+
             message.Body = new TextPart("plain")
             {
-                Text = checkResults.Data.ToString(Formatting.Indented)
+                Text = bodyText
             };
 
             using (var client = new SmtpClient())
@@ -48,7 +76,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
                 if (smtp.IndexOf(':') < 0) smtp += ":25";
                 string[] parts = SMTP.Split(':');
                 client.Connect(parts[0], int.Parse(parts[1]), EmailUseSSL);
-                client.AuthenticationMechanisms.Clear();
+                //client.AuthenticationMechanisms.Clear();
                 if (!string.IsNullOrEmpty(Username))
                     client.Authenticate(Username, Password);
                 await client.SendAsync(message).ContinueWith( (a) => {
@@ -58,12 +86,12 @@ namespace yupisoft.ConfigServer.Core.Hooks
                     {
                         res.Data = "Mail sent";
                         res.Result = HookNotificationResult.Success;
-                        _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") ");
+                        _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") ");
                     }
                     else
                     {
                         res.Result = HookNotificationResult.Error;
-                        _logger.LogTrace("Hook(" + checkResults.HookId + ") with Notification(" + Id + ") Task Failed: " + a.Status);
+                        _logger.LogTrace("Hook(" + checkResults.Hook.Id + ") with Notification(" + Id + ") Task Failed: " + a.Status);
                     }
                     OnNotificationDone(Id, res);
                     client.Disconnect(true);

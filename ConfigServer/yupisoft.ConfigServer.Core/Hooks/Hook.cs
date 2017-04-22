@@ -66,10 +66,17 @@ namespace yupisoft.ConfigServer.Core.Hooks
         }
 
         public static Hook CreateHook(JHookConfig config, ILogger logger, ConfigServerTenant tenant)
-        {            
-            if (config.HookType == JHookCheckType.DataNodeChange) return new HookDataNodeChange(config, logger, tenant);
-            if (config.HookType == JHookCheckType.ServiceStatusChange) return new HookServiceStatusChange(config, logger, tenant);
-            logger.LogWarning("Cant Create a Hook type:" + config.HookType.ToString());
+        {
+            try
+            {
+                if (config.HookType == JHookCheckType.DataNodeChange) return new HookDataNodeChange(config, logger, tenant);
+                if (config.HookType == JHookCheckType.ServiceStatusChange) return new HookServiceStatusChange(config, logger, tenant);
+                logger.LogWarning("Cant Create a Hook type:" + config.HookType.ToString());
+            }
+            catch(Exception ex)
+            {
+                logger.LogError("Exception Creating a Hook type:" + config?.HookType.ToString() ?? "<null> ex: " + ex.Message);
+            }
             return null;
         }
 

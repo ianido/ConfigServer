@@ -19,7 +19,7 @@ namespace yupisoft.ConfigServer.Core.Services
         {
             lock (_sync1)
             {
-                _logger.LogTrace("Srv: " + this.Id + " Chk: " + CheckerId + " -> " + status.ToString());
+                //_logger.LogTrace("Srv: " + this.Id + " Chk: " + CheckerId + " -> " + status.ToString());
                 ServiceCheckResult res = CheckResults.FirstOrDefault(c => c.CheckerId == CheckerId);
                 res.Result = status;
                 ServiceCheckStatus lstatus = ServiceCheckStatus.InProgress;

@@ -27,6 +27,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         private DatacenterConfigSection _datacenterConfig;
         private ClusterConfigSection _clusterConfig;
         private ConfigServerTenants _tenantManager;
+        private int _NodesMonitoringRndIntervalHeartbeat = 2000; // Milliseconds
         private int _NodesMonitoringHeartbeat = 2000; // Milliseconds
         private int _DataCenterMaxIntervalHeartBeat = 2000; // Milliseconds    
         private int _DataCenterMinIntervalHeartBeat = 2000; // Milliseconds
@@ -250,7 +251,8 @@ namespace yupisoft.ConfigServer.Core.Cluster
                              && ((message.NodeAliveSince < previousMsg.NodeAliveSince) || (selfNode.LastLogDate > previousMsg.LastLogDate))
                            )
                        )
-                {
+                {                    
+                    // Generate Full Sync
                     foreach (var dh in message.DataHash)
                     {
                         if (previousMsg.DataHash.FirstOrDefault(e => e.Id == dh.Id).Hash != dh.Hash)
@@ -312,8 +314,21 @@ namespace yupisoft.ConfigServer.Core.Cluster
             lock (node)
             {
                 if (!node.Active) return;
-                if ((node.Self) || (node.InUse) || (node.Mode == Node.NodeMode.Client) || (!node.NodeConfig.HeartBeat)) return;
-
+                if ((node.Self) || (node.Mode == Node.NodeMode.Client) || (!node.NodeConfig.HeartBeat)) return;
+                if (node.InUse)
+                {
+                    _logger.LogTrace(req.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") --> X " + node.Id + "(InUse).");
+                    return;
+                }
+                lock (selfNode)
+                {
+                    if (selfNode.InUse)
+                    {
+                        _logger.LogTrace(req.MessageType + " " + selfNode.Id + "(inUse) Log(" + selfNode.LastLogId + ") --> X " + node.Id + ".");
+                        return;
+                    }
+                    selfNode.InUse = true;
+                }
                 if (node.SkipAttempts > 0)
                 {
                     node.SkipAttempts--;
@@ -329,7 +344,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
                     else
                         _logger.LogTrace(req.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") --> " + node.Id + ".");
 
-                    selfNode.InUse = true;
                     string uri = (node.DataCenter != selfNode.DataCenter) ? node.WANUri : node.Uri;
                     client.PostAsync(uri + "/api/Cluster/HeartBeat", new StringContent(msgData, Encoding.UTF8, "application/json"), _clusterSecurity.AppId, _clusterSecurity.SecretKey, _clusterSecurity.Encrypted).ContinueWith((a) =>
                     {
@@ -376,7 +390,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
                             finally
                             {
                                 node.InUse = false;
-                                selfNode.InUse = false;
+                                lock(selfNode) selfNode.InUse = false;
 
                                 #region Check for max lives
                                 try
@@ -412,62 +426,10 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 }
                 catch (Exception ex)
                 {
-                    selfNode.InUse = false;
+                    lock(selfNode) selfNode.InUse = false;
                     node.InUse = false;
                     _logger.LogCritical("Exception processing node: " + node.Id + ex.ToString());
                 }
-            }
-        }
-
-        public HeartBeatMessage ReceiveHeartBeat(HeartBeatMessage msg)
-        {
-            if (selfNode.InUse)
-            {
-                _logger.LogTrace(msg.MessageType + " " + selfNode.Id + "(InUse) Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
-                var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
-                return response;
-            }
-            _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
-            if (msg.MessageType == HeartBeartType.UpdateRequest)
-            {
-                _tenantManager.ApplyUpdate(msg.Log, selfNode.LogMessages);
-
-                var response = CreateMessageFor(HeartBeartType.UpdateResponse, msg);
-                return response;
-            }
-            else
-            if (msg.MessageType == HeartBeartType.HeartBeatRequest)
-            {
-                if (
-                     (
-                       (selfNode.LastLogId == msg.LastLogId) && 
-                       ((_AliveSince < msg.NodeAliveSince) || (selfNode.LastLogDate > msg.LastLogDate))
-                     )
-                     || (msg.LastLogId < selfNode.LastLogId))
-                {
-                    var response = CreateMessageFor(HeartBeartType.UpdateRequest, msg);
-                    if (response.Log.Count > 0)
-                    {
-                        _logger.LogInformation(response.MessageType + " --> " + msg.NodeId + ". " + (response.Log[0].Full ? "FULL " : "") + "sync for: " + response.Log.Count + " tenants.");
-                        return response;
-                    }
-                    else
-                    {
-                        response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
-                        return response;
-                    }
-                }
-                else
-                {
-                    var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
-                    return response;
-                }
-            }
-            else
-            {
-                var response = CreateMessageFor(HeartBeartType.Unknow, msg);
-                _logger.LogError("Unsupported Message: " + msg.MessageType + " received from " + msg.NodeId);
-                return response;
             }
         }
 
@@ -477,7 +439,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             if (selfNode.Mode == Node.NodeMode.Server)
             {
                 Node[] nodes = null;
-                lock (_nodes){nodes = _nodes.ToArray();}
+                lock (_nodes) { nodes = _nodes.ToArray(); }
                 foreach (var w in nodes)
                 {
                     lock (w)
@@ -497,16 +459,17 @@ namespace yupisoft.ConfigServer.Core.Cluster
             else
             {
                 Node node = null;
-                lock (_nodes){
+                lock (_nodes)
+                {
                     node = _nodes.OrderByDescending(n => n.Priority).FirstOrDefault(n => !n.Self && n.Active && n.Mode == Node.NodeMode.Server && n.NodeConfig.HeartBeat);
                 }
                 if (node != null)
                 {
                     var req = CreateMessageFor(HeartBeartType.HeartBeatRequest, null);
                     SendHeartBeat(node, req);
-                }              
+                }
             }
-            _heartbeatTimer.Change(_NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat); // Reenable the timer;
+            _heartbeatTimer.Change(rndGenerator.Next(_NodesMonitoringRndIntervalHeartbeat) + _NodesMonitoringHeartbeat, _NodesMonitoringHeartbeat); // Reenable the timer;
         }
 
         private void DataCenterTimer_Elapsed(object state)
@@ -528,6 +491,82 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 }
             }
             _betweenDatacenterTimer.Change(rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat, rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat);
+        }
+
+        public HeartBeatMessage ReceiveHeartBeat(HeartBeatMessage msg)
+        {
+            var node = Nodes.FirstOrDefault(n => n.Id == msg.NodeId);
+            lock (selfNode)
+            {
+                if (selfNode.InUse)
+                {
+                    _logger.LogTrace(msg.MessageType + " " + selfNode.Id + "(InUse) Log(" + selfNode.LastLogId + ") X <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
+                    var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
+                    return response;
+                }
+            }
+            lock (node)
+            {
+                if (node.InUse)
+                {
+                    _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + "(InUse) Log(" + msg.LastLogId + ")");
+                    var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
+                    return response;
+                }
+                node.InUse = true;
+            }
+            try
+            {
+                _logger.LogTrace(msg.MessageType + " " + selfNode.Id + " Log(" + selfNode.LastLogId + ") <-- " + msg.NodeId + " Log(" + msg.LastLogId + ")");
+                if (msg.MessageType == HeartBeartType.UpdateRequest)
+                {
+                    _tenantManager.ApplyUpdate(msg.Log, selfNode.LogMessages);
+
+                    var response = CreateMessageFor(HeartBeartType.UpdateResponse, msg);
+                    return response;
+                }
+                else
+                if (msg.MessageType == HeartBeartType.HeartBeatRequest)
+                {
+                    if (
+                         (
+                           (selfNode.LastLogId == msg.LastLogId) &&
+                           ((_AliveSince < msg.NodeAliveSince) || (selfNode.LastLogDate > msg.LastLogDate))
+                         )
+                         || (msg.LastLogId < selfNode.LastLogId))
+                    {
+                        var response = CreateMessageFor(HeartBeartType.UpdateRequest, msg);
+                        if (response.Log.Count > 0)
+                        {
+                            _logger.LogInformation(response.MessageType + " --> " + msg.NodeId + ". " + (response.Log[0].Full ? "FULL " : "") + "sync for: " + response.Log.Count + " tenants.");
+                            return response;
+                        }
+                        else
+                        {
+                            response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
+                            return response;
+                        }
+                    }
+                    else
+                    {
+                        var response = CreateMessageFor(HeartBeartType.HeartBeatResponse, msg);
+                        return response;
+                    }
+                }
+                else
+                {
+                    var response = CreateMessageFor(HeartBeartType.Unknow, msg);
+                    _logger.LogError("Unsupported Message: " + msg.MessageType + " received from " + msg.NodeId);
+                    return response;
+                }
+            }
+            finally
+            {
+                lock (node)
+                {
+                    node.InUse = false;
+                }
+            }
         }
 
         public void StartManaging()

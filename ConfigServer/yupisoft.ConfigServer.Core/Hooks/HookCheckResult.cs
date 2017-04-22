@@ -8,7 +8,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
 {
     public class HookCheckResult : IHookCheckResult
     {
-        public string HookId { get; set; }
+        public Hook Hook { get; set; }
         public JToken Data { get; set; }
         public HookCheckStatus Result  { get; set; }
         public HookCheckResult()

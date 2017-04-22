@@ -6,11 +6,11 @@ namespace yupisoft.ConfigServer.Core.Services
 {
     public enum ServiceCheckStatus
     {
+        Nocheck,
+        Iddle,
+        InProgress,
         Passing,
         Warning,
-        Failing,
-        Nocheck,
-        InProgress,
-        Iddle,
+        Failing
     }
 }
