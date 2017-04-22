@@ -160,6 +160,57 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 }
         }
 
+        private void UpdateNodeList(HeartBeatMessage message, HeartBeatMessage previousMsg)
+        {
+            #region message.Nodes --> Determine Discovery Node Collection Diferences
+            // Check diferences, send only the diferences
+            var currentNodes = _nodes.Select(n => n.NodeConfig).ToArray();
+            var msgNodes = previousMsg.Nodes.Select(n => NodeConfigSection.Deserialize(n)).ToList();
+            foreach (var node in msgNodes)
+            {
+                var mNode = currentNodes.FirstOrDefault(n => n.Id == node.Id);
+                if (mNode == null)
+                {
+                    _nodes.Add(new Node(node));
+                    _cfgChanger.AddClusterNode(node);
+                }
+            }
+
+            foreach (var node in currentNodes)
+            {
+                var mNode = msgNodes.FirstOrDefault(n => n.Id == node.Id);
+                if (mNode == null)
+                    msgNodes.Add(node);
+                else
+                {
+                    // Check for changes
+                    if (mNode.Serialize() != node.Serialize())
+                    {
+                        if (mNode.Enabled && !node.Enabled)
+                        {
+                            node.CopyFrom(mNode);
+                            _cfgChanger.UpdateClusterNode(node);
+                        }
+                        else
+                        if (!mNode.Enabled && node.Enabled)
+                            mNode.CopyFrom(node);
+                        else
+                        {
+                            if (_AliveSince > previousMsg.NodeAliveSince)
+                            {
+                                node.CopyFrom(mNode);
+                                _cfgChanger.UpdateClusterNode(node);
+                            }
+                            else
+                                mNode.CopyFrom(node);
+                        }
+                    }
+                }
+            }
+            message.Nodes = msgNodes.Select(n => n.Serialize()).ToArray();
+            #endregion
+        }
+
         private HeartBeatMessage CreateMessageFor(HeartBeartType type, HeartBeatMessage previousMsg)
         {
             HeartBeatMessage message = new HeartBeatMessage();
@@ -175,59 +226,19 @@ namespace yupisoft.ConfigServer.Core.Cluster
             message.NodeAliveSince = _AliveSince;
             message.DataHash = _tenantManager.Tenants.Select(p => new TenantHash() { Id = p.TenantConfig.Id, Hash = p.DataHash }).ToArray();
 
-            if ((type == HeartBeartType.HeartBeatRequest) || (type == HeartBeartType.HeartBeatResponse) || (type == HeartBeartType.HeartBeatUpdateResponse) || (type == HeartBeartType.UpdateResponse))
+            if ((type == HeartBeartType.HeartBeatRequest) )
             {
                 message.Nodes = _nodes.Select(n => n.NodeConfig.Serialize()).ToArray();
             }
+            else
+            if ((type == HeartBeartType.HeartBeatResponse) || (type == HeartBeartType.HeartBeatUpdateResponse) || (type == HeartBeartType.UpdateResponse))
+            {
+                UpdateNodeList(message, previousMsg);
+            }
+            else
             if ((type == HeartBeartType.UpdateRequest))
             {
-                #region message.Nodes --> Determine Discovery Node Collection Diferences
-                // Check diferences, send only the diferences
-                var currentNodes = _nodes.Select(n => n.NodeConfig).ToArray();
-                var msgNodes = previousMsg.Nodes.Select(n => NodeConfigSection.Deserialize(n)).ToList();
-                foreach (var node in msgNodes)
-                {
-                    var mNode = currentNodes.FirstOrDefault(n => n.Id == node.Id);
-                    if (mNode == null)
-                    {
-                        _nodes.Add(new Node(node));
-                        _cfgChanger.AddClusterNode(node);
-                    }
-                }
-
-                foreach (var node in currentNodes)
-                {
-                    var mNode = msgNodes.FirstOrDefault(n => n.Id == node.Id);
-                    if (mNode == null)
-                        msgNodes.Add(node);
-                    else
-                    {
-                        // Check for changes
-                        if (mNode.Serialize() != node.Serialize())
-                        {
-                            if (mNode.Enabled && !node.Enabled)
-                            {
-                                node.CopyFrom(mNode);
-                                _cfgChanger.UpdateClusterNode(node);
-                            }
-                            else
-                            if (!mNode.Enabled && node.Enabled)
-                                mNode.CopyFrom(node);
-                            else
-                            {
-                                if (_AliveSince > previousMsg.NodeAliveSince)
-                                {
-                                    node.CopyFrom(mNode);
-                                    _cfgChanger.UpdateClusterNode(node);
-                                }
-                                else
-                                    mNode.CopyFrom(node);
-                            }
-                        }
-                    }
-                }
-                message.Nodes = msgNodes.Select(n => n.Serialize()).ToArray();
-                #endregion
+                UpdateNodeList(message, previousMsg);
 
                 bool DifferentDataHash = false;
                 foreach (var dh in message.DataHash)

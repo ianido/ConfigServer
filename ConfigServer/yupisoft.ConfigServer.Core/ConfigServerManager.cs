@@ -42,35 +42,79 @@ namespace yupisoft.ConfigServer.Core
             _monkeyTimer.Change(Timeout.Infinite, 2000);
             lock (_lockMonkey)
             {
-                string[] lines = File.ReadAllLines(Path.Combine(Directory.GetCurrentDirectory(), "monkey.txt"));
-                foreach(string line in lines)
+                try
                 {
-                    if (line.StartsWith("CHG.NODE.URI"))
+                    string[] lines = File.ReadAllLines(Path.Combine(Directory.GetCurrentDirectory(), "monkey.txt"));
+                    foreach (string line in lines)
                     {
-                        //CHG.NODE.URI:1:http://127.0.0.1:8003
-                        string[] parts = line.Split(':');
-                        string nodeId = parts[1];
-                        string uri = parts[2] + (parts.Length > 3 ? ":" + parts[3] : "") + (parts.Length > 4 ? ":" + parts[4] : "");
-                        Node node = ClusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId);
-                        if ((node != null) && (node.NodeConfig.Uri != uri))
+                        if (line.StartsWith("CHG.NODE.URI"))
                         {
-                            node.NodeConfig.Uri = uri;
-                            _logger.LogTrace("Monkey: Applying Command(" + line + ")");
+                            //CHG.NODE.URI:1:http://127.0.0.1:8003
+                            string[] parts = line.Split(':');
+                            string nodeId = parts[1];
+                            string uri = parts[2] + (parts.Length > 3 ? ":" + parts[3] : "") + (parts.Length > 4 ? ":" + parts[4] : "");
+                            bool applied = false;
+                            if (nodeId == "*")
+                            {
+                                foreach (Node no in ClusterMan.Nodes)
+                                {
+                                    if ((no != null) && (no.NodeConfig.Uri != uri))
+                                    {
+                                        no.NodeConfig.Uri = uri;
+                                        applied = true;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Node no = ClusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId);
+                                if ((no != null) && (no.NodeConfig.Uri != uri))
+                                {
+                                    no.NodeConfig.Uri = uri;
+                                    applied = true;
+                                }
+                            }
+
+                            if (applied) _logger.LogTrace("Monkey: Applying Command(" + line + ")");
+                        }
+                        if (line.StartsWith("CHG.NODE.WURI"))
+                        {
+                            //CHG.NODE.WURI:1:http://127.0.0.1:8003
+                            string[] parts = line.Split(':');
+                            string nodeId = parts[1];
+                            string uri = parts[2] + (parts.Length > 3 ? ":" + parts[3] : "") + (parts.Length > 4 ? ":" + parts[4] : "");
+                            Node node = ClusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId);
+                            bool applied = false;
+                            if (nodeId == "*")
+                            {
+                                foreach (Node no in ClusterMan.Nodes)
+                                {
+                                    if ((no != null) && (no.NodeConfig.Uri != uri))
+                                    {
+                                        no.NodeConfig.WANUri = uri;
+                                        applied = true;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                Node no = ClusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId);
+                                if ((no != null) && (no.NodeConfig.Uri != uri))
+                                {
+                                    no.NodeConfig.WANUri = uri;
+                                    applied = true;
+                                }
+                            }
+
+                            if (applied) _logger.LogTrace("Monkey: Applying Command(" + line + ")");
                         }
                     }
-                    if (line.StartsWith("CHG.NODE.WURI"))
-                    {
-                        //CHG.NODE.WURI:1:http://127.0.0.1:8003
-                        string[] parts = line.Split(':');
-                        string nodeId = parts[1];
-                        string uri = parts[2] + (parts.Length > 3 ? ":" + parts[3] : "") + (parts.Length > 4 ? ":" + parts[4] : "");
-                        Node node = ClusterMan.Nodes.FirstOrDefault(n => n.Id == nodeId);
-                        if ((node != null) && (node.NodeConfig.WANUri != uri))
-                        {
-                            node.NodeConfig.WANUri = uri;
-                            _logger.LogTrace("Monkey: Applying Command(" + line + ")");
-                        }
-                    }
+                }
+                catch(Exception ex)
+                {
+                    _logger.LogTrace("Monkey Disabled because of an Exception: " + ex.Message);
+                    _monkeyTimer.Change(Timeout.Infinite, 2000);
+                    return;
                 }
             }
             _monkeyTimer.Change(2000, 2000);
@@ -87,6 +131,7 @@ namespace yupisoft.ConfigServer.Core
                 _logger.LogTrace("Loaded Data for Tenant: " + tenant.Id);
             }
             ClusterMan.StartManaging();
+            _monkeyTimer.Change(2000, 2000);
         }
 
         private void Tenant_EndLoadTenantData(ConfigServerTenant tenant, JToken dataToken, bool startingUp)
