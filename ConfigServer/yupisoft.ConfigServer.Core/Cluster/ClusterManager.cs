@@ -104,7 +104,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
             _DataCenterMaxIntervalHeartBeat = _clusterConfig.Monitoring.DataCenterMaxInterval;
             _DataCenterMinIntervalHeartBeat = _clusterConfig.Monitoring.DataCenterMinInterval;
             _NodesMonitoringHeartbeat = _clusterConfig.Monitoring.Interval;
-            _NodesMonitoringRndIntervalHeartbeat = _clusterConfig.Monitoring.Interval;
+            _NodesMonitoringRndIntervalHeartbeat = _clusterConfig.Monitoring.RndInterval;
             _NodesMonitoringMaxAttempts = _clusterConfig.Monitoring.MaxAttempts;
             _NodesMonitoringSkipAttemptsOnFail = _clusterConfig.Monitoring.SkipAttemptsOnFail;
             _NodesMonitoringLife = _clusterConfig.Monitoring.NodesLife;
