@@ -7,9 +7,9 @@
     },
     "newobject": {
       "$inherits": "*configuration.baseobject",
-      "field0": "valueAXb",
-      "field1": "value1XY",
-      "field2": "value2X1",
+      "field0": "value123",
+      "field1": "value456",
+      "field2": "value111",
       "array": [
         1,
         3
