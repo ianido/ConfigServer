@@ -18,13 +18,13 @@ namespace yupisoft.ConfigServer.Core
         private ILogger _logger;
         private Timer _timer;
         private ConfigServerTenants _tenants;
-        private ClusterManager _clusterMan;
+        private IClusterManager _clusterMan;
         private ServiceDiscoveryConfigSection _sdConfig;
         private GeoServices _geoServices;
         private IServiceDiscovery[] servers;
         private bool _Monitoring = false;
 
-        public ConfigServerServices(IOptions<ServiceDiscoveryConfigSection> sdConfig, ILogger<ConfigServerServices> logger, ConfigServerTenants tenants, ClusterManager clusterMan, GeoServices geoServices)
+        public ConfigServerServices(IOptions<ServiceDiscoveryConfigSection> sdConfig, ILogger<ConfigServerServices> logger, ConfigServerTenants tenants, IClusterManager clusterMan, GeoServices geoServices)
         {
             _logger = logger;
             _tenants = tenants;

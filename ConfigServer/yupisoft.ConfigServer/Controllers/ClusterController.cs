@@ -16,10 +16,10 @@ namespace yupisoft.ConfigServer.Controllers
     public class ClusterController : Controller
     {
         private ILogger _logger { get; set; }
-        private ClusterManager _clsManager { get; set; }
+        private IClusterManager _clsManager { get; set; }
 
 
-        public ClusterController(ILogger<ClusterController> logger, ClusterManager clsManager)
+        public ClusterController(ILogger<ClusterController> logger, IClusterManager clsManager)
         {
             _logger = logger;
             _clsManager = clsManager;

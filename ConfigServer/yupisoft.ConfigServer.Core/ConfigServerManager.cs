@@ -21,15 +21,14 @@ namespace yupisoft.ConfigServer.Core
         public ConfigServerTenants TenantManager { get; private set; }
         public ConfigServerServices ServiceManager { get; private set; }
         public ConfigServerHooks HooksManager { get; private set; }
-        public ClusterManager ClusterMan { get; private set; }
+        public IClusterManager ClusterMan { get; private set; }
 
         public DateTime AliveSince { get; private set; }
 
-        public event DataChangedEventHandler DataChanged;
 
-        public ConfigServerManager(ConfigServerServices serviceManager, ConfigServerHooks hooksManager, ClusterManager clusterMan, ILogger<ConfigServerManager> logger)
+        public ConfigServerManager(ConfigServerServices serviceManager, ConfigServerHooks hooksManager, IClusterManager clusterMan, ConfigServerTenants tenants,  ILogger<ConfigServerManager> logger)
         {
-            TenantManager = clusterMan.TenantManager;
+            TenantManager = tenants;
             ServiceManager = serviceManager;
             HooksManager = hooksManager;
             ClusterMan = clusterMan;
@@ -124,7 +123,6 @@ namespace yupisoft.ConfigServer.Core
         {
             foreach (var tenant in TenantManager.Tenants)
             {
-                tenant.Store.Change += Store_Change;
                 tenant.StartLoadTenantData += Tenant_StartLoadTenantData;
                 tenant.EndLoadTenantData += Tenant_EndLoadTenantData;
                 tenant.Load(true);
@@ -146,14 +144,6 @@ namespace yupisoft.ConfigServer.Core
             ServiceManager.StopServiceDiscovery();
             ServiceManager.StopMonitoring();
             HooksManager.StopMonitoring();            
-        }
-
-        private void Store_Change(ConfigServerTenant tenant, IStoreProvider sender, string entityName)
-        {
-            var loadResult = tenant.Load(false);
-            if (loadResult.Changes.Length > 0)
-                foreach (var e in loadResult.Changes)
-                    DataChanged?.Invoke(tenant.TenantConfig.Id, e.entity, e.diffToken);
         }
 
         private ConfigServerTenant GetTenant(string tenantId)

@@ -79,7 +79,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
                 }
             }
 
-            if (_lastStatus == ServiceCheckStatus.Iddle)
+            if ((_lastStatus == ServiceCheckStatus.Iddle) || (currentServiceStatus == ServiceCheckStatus.Iddle))
             {
                 _lastStatus = currentServiceStatus;
                 _lastStatusDate = DateTime.UtcNow;

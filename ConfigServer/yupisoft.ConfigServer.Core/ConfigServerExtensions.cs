@@ -41,7 +41,7 @@ namespace yupisoft.ConfigServer.Core
             services.AddSingleton<ConfigServerServices>();
             services.AddSingleton<ConfigServerHooks>();
             services.AddSingleton<ConfigurationChanger>(imp => new ConfigurationChanger(Path.Combine(hostingEnvironment.ContentRootPath, "appsettings.json")));
-            services.AddSingleton<ClusterManager>(); 
+            services.AddSingleton<IClusterManager, MergeClusterManager>(); 
 
             return services;
         }

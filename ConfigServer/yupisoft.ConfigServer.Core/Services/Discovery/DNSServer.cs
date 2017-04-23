@@ -29,7 +29,7 @@ namespace yupisoft.ConfigServer.Core.Services
 
         private DNSConfigSection _config;
         private ConfigServerTenants _tenants;
-        private ClusterManager _clusterMan;
+        private IClusterManager _clusterMan;
         private GeoServices _geoServices;
 
         private ILogger _logger;
@@ -38,7 +38,7 @@ namespace yupisoft.ConfigServer.Core.Services
         private Dictionary<string,string> _knownAddresses;
 
 
-        public DNSServer(DNSConfigSection config, ILogger logger, ConfigServerTenants tenants, ClusterManager clusterMan, GeoServices geoServices)
+        public DNSServer(DNSConfigSection config, ILogger logger, ConfigServerTenants tenants, IClusterManager clusterMan, GeoServices geoServices)
         {
             _config = config;
             _logger = logger;

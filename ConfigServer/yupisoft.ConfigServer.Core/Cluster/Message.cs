@@ -82,6 +82,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         public Node.NodeMode NodeMode { get; set; }
         public DateTime NodeAliveSince { get; set; }
         public long LastLogId { get; set; }
+        public long[] LogsId { get; set; }
         public DateTime LastLogDate { get; set; }
         public DateTime Created { get; set; }
         public List<LogMessage> Log { get; set; }
@@ -92,6 +93,7 @@ namespace yupisoft.ConfigServer.Core.Cluster
         {
             Log = new List<LogMessage>();
             Nodes = new string[0];
+            LogsId = new long[0];
         }
     }
 }

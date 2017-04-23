@@ -36,6 +36,8 @@ namespace yupisoft.ConfigServer.Core.Watchers
 
         public void CheckForChange() {
             if (!EnableRaisingEvents) return;
+            if (!File.Exists(Path.Combine(_connection, EntityName)))
+                return;            
             FileInfo fi = new FileInfo(Path.Combine(_connection,EntityName));
             if (fi.LastWriteTimeUtc != LastWriteDate)
             {

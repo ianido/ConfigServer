@@ -13,6 +13,7 @@ using yupisoft.ConfigServer.Core.Cluster;
 using yupisoft.ConfigServer.Core.Utils;
 using yupisoft.ConfigServer.Core.Services;
 using yupisoft.ConfigServer.Core.Hooks;
+using JsonDiffPatchDotNet;
 
 namespace yupisoft.ConfigServer.Core
 {
@@ -32,11 +33,12 @@ namespace yupisoft.ConfigServer.Core
     {
         private object _lock = new object();
         public TenantConfigSection TenantConfig { get; private set; }
+        public ConfigServerTenants Parent { get; private set; }
         public IStoreProvider Store { get; }
         public string Id { get { return TenantConfig.Id; } }
         public string Name { get { return TenantConfig.Name; } }
         public bool EnableServiceDiscovery { get { return TenantConfig.EnableServiceDiscovery; } }
-        public bool Encrypted { get { return TenantConfig.Encrypted; } }
+        public bool Encrypted { get { return TenantConfig.Encrypted; } }        
         public string StartEntityName { get { return Store.StartEntityName; } }
         public string ACLEntityName { get { return Store.ACLEntityName; } }
         public JToken Token { get; private set; }
@@ -56,7 +58,7 @@ namespace yupisoft.ConfigServer.Core
             {
                 string allData = "";
                 foreach(var v in RawTokens)
-                    allData += v.Value.ToString(Newtonsoft.Json.Formatting.None);                    
+                    allData += v.Value.Ordered().ToString(Newtonsoft.Json.Formatting.None);                    
                 ulong dataHash = StringHandling.CalculateHash(allData.ToString());
                 return dataHash.ToString();
             }
@@ -76,13 +78,14 @@ namespace yupisoft.ConfigServer.Core
             EndLoadTenantData?.Invoke(this, dataToken, startingUp);
         }
 
-        public ConfigServerTenant(TenantConfigSection tenantConfig, IHostingEnvironment env, ILogger logger)
+        public ConfigServerTenant(TenantConfigSection tenantConfig, ConfigServerTenants parent, IHostingEnvironment env, ILogger logger)
         {
             _logger = logger;
             RawTokens = new Dictionary<string, JToken>();
             Services = new Dictionary<string, Service>();
             Hooks = new Dictionary<string, Hook>();
             TenantConfig = tenantConfig;
+            Parent = parent;
 
             switch (tenantConfig.Store.Provider)
             {
@@ -192,14 +195,21 @@ namespace yupisoft.ConfigServer.Core
             }
             else
             {
+                var options = new JsonDiffPatchDotNet.Options();
+                if (!Parent.MergeMode)
+                {
+                    options.TextDiff = TextDiffMode.Simple;
+                    options.ArrayDiff = ArrayDiffMode.Simple;
+                }
+                var mJsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch(options);
+
                 foreach (var entity in Store.Watcher.GetEntities())
                 {
                     var rawToken = Store.GetRaw(entity);
                     if (!startingUp && RawTokens.ContainsKey(entity))
                     {
                         var previousToken = RawTokens[entity];
-                        var jsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
-                        JToken diffToken = jsonDiff.Diff(previousToken, rawToken);
+                        JToken diffToken = mJsonDiff.Diff(previousToken, rawToken);
                         if (diffToken != null) tchanges.Add(new EntityChanges() { entity = entity, diffToken = diffToken });
                     }
                     newRawTokens.Add(entity, rawToken);
@@ -285,15 +295,35 @@ namespace yupisoft.ConfigServer.Core
     public class ConfigServerTenants
     {
         private object _lock = new object();
+
+        private TenantsConfigSection _TenantsConfig;
         public List<ConfigServerTenant> Tenants { get; set; }
         public ILogger _logger { get; private set; }
+
+        public bool MergeMode { get; set; }
+        public TenantHash[] DataHash { get
+            {
+                return Tenants.Select(p => new TenantHash() { Id = p.TenantConfig.Id, Hash = p.DataHash }).ToArray();
+            }
+        }
+
+        public string[] DiffTenantHash(TenantHash[] dataHash)
+        {
+            List<string> diffTenants = new List<string>();
+            var myDataHash = DataHash;
+            foreach (var dh in myDataHash)
+                if (dataHash.FirstOrDefault(e => e.Id == dh.Id).Hash != dh.Hash)
+                    diffTenants.Add(dh.Id);
+            return diffTenants.ToArray();
+        }
 
         public ConfigServerTenants(IOptions<TenantsConfigSection> tenantsConfig, IHostingEnvironment env, ILogger<ConfigServerTenant> logger)
         {
             _logger = logger;
-            Tenants = tenantsConfig.Value.Tenants.Where(t=>t.Enabled).Select(t =>
+            _TenantsConfig = tenantsConfig.Value;
+            Tenants = _TenantsConfig.Tenants.Where(t=>t.Enabled).Select(t =>
             {
-                ConfigServerTenant tenant = new ConfigServerTenant(t, env, logger);
+                ConfigServerTenant tenant = new ConfigServerTenant(t, this, env, logger);
                 return tenant;
             }).ToList();
 
@@ -316,6 +346,14 @@ namespace yupisoft.ConfigServer.Core
         {
             int TotalLogsApplied = 0;
             var groupedTenant = logs.GroupBy(u => u.TenantId).ToList();
+            var options = new JsonDiffPatchDotNet.Options();
+            if (!MergeMode)
+            {
+                options.TextDiff = TextDiffMode.Simple;
+                options.ArrayDiff = ArrayDiffMode.Simple;
+            }
+
+            var mJsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch(options);
 
             foreach (var groupT in groupedTenant)
             {
@@ -339,25 +377,40 @@ namespace yupisoft.ConfigServer.Core
                         if (!tenant.Store.Watcher.IsWatching(entity)) { _logger.LogError("ApplyUpdate: Unrecognized entity: " + entity + " for tanant: " + tenant); continue; }
 
                         var groupSorted = group.OrderBy(g => g.LogId);
+                        JToken rawToken = tenant.Store.GetRaw(entity);
 
+                        // Unpath current applied changes to avoid duplications
+
+                        foreach (var log in groupSorted.OrderByDescending(e=>e.LogId))
+                        {
+                            if (string.IsNullOrEmpty(log.JsonDiff)) { continue; }
+
+                            if (applyedlogs.Any(m => m.LogId == log.LogId) && !log.Full) { 
+                                JToken patchToken = JToken.Parse(log.JsonDiff);
+                                rawToken = mJsonDiff.Unpatch(rawToken, patchToken);
+                            }
+                        }
+                        bool full = false;
                         foreach (var log in groupSorted)
                         {
                             if (string.IsNullOrEmpty(log.JsonDiff)) { continue; }
-                            JToken rawToken = tenant.Store.GetRaw(entity);
-                            applyedlogs.Add(log);
+
+                            if (!applyedlogs.Any(m => m.LogId == log.LogId) && (!log.Full))
+                                applyedlogs.Add(log);
 
                             if (log.Full)
                             {
+                                full = true;
                                 tenant.Store.Set(JToken.Parse(log.JsonDiff), entity);
                             }
                             else
                             {
                                 JToken patchToken = JToken.Parse(log.JsonDiff);
-                                var mJsonDiff = new JsonDiffPatchDotNet.JsonDiffPatch();
-                                JToken result = mJsonDiff.Patch(rawToken, patchToken);
-                                tenant.Store.Set(result, entity);
+                                rawToken = mJsonDiff.Patch(rawToken, patchToken);                                
                             }
                         }
+
+                        if (!full) tenant.Store.Set(rawToken, entity);
                     }
 
                     var res = tenant.Load(false);
@@ -370,7 +423,7 @@ namespace yupisoft.ConfigServer.Core
                     }
 
                 }
-            }
+            }            
             _logger.LogInformation("Applied " + TotalLogsApplied + " logs successfully.");
             return TotalLogsApplied > 0;
         }

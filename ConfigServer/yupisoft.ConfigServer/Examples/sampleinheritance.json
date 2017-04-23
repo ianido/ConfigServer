@@ -1,17 +1,17 @@
 {
   "configuration": {
     "base": {
-      "field0": "value0",
-      "fieldA": "valueA"
+      "field0": "value2",
+      "fieldA": "5678",
+      "field2": "1111"
     },
     "newobject": {
       "$inherits": "*configuration.baseobject",
-      "field0": "value0Xb",
+      "field0": "valueAXb",
       "field1": "value1XY",
-      "field2": "value2XY",
+      "field2": "value2X1",
       "array": [
         1,
-        2,
         3
       ]
     },
@@ -31,7 +31,7 @@
             "Name": "Http Notification",
             "http": "http://localhost/datachange"
           }
-        ]        
+        ]
       },
       "hook.change02": {
         "$hook": "$servicestatus.change",
@@ -43,15 +43,15 @@
             "Id": "mail-01",
             "Name": "Email Notification",
             "Email": "igarcia@nearsolutions.net",
-			      "EmailFrom": "igarcia@nearsolutions.net",
-			      "SMTP": "smtp.gmail.com:587",
-			      "Username": "israel3000@gmail.com",
-			      "Password": "manasa12",
-			      "EmailUseSSL":"false",
+            "EmailFrom": "igarcia@nearsolutions.net",
+            "SMTP": "smtp.gmail.com:587",
+            "Username": "israel3000@gmail.com",
+            "Password": "manasa12",
+            "EmailUseSSL": "false",
             "EmailSubject": "Service $servicename status change to '$statusto'.",
             "EmailBody": "Service was in: '$statusfrom' for $timespan. \nRegards.\nService Monitor."
           }
-		]
+        ]
       }
     },
     "services": {
@@ -94,7 +94,7 @@
             "timeout": "2s",
             "disabled": false,
             "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
-        }
+          }
         ]
       },
       "srv01.europa2": {

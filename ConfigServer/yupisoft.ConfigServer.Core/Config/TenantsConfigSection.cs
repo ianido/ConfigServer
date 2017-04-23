@@ -31,7 +31,7 @@ namespace yupisoft.ConfigServer.Core
 
     public class TenantsConfigSection
     {
-
+        
         public List<TenantConfigSection> Tenants { get; set; }
 
         public TenantsConfigSection()

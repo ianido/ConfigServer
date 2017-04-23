@@ -73,6 +73,7 @@ namespace yupisoft.ConfigServer.Core
     {
         public string OwnNodeName { get; set; }
         public string OwnNodeUrl { get; set; }
+        public bool MergeMode { get; set; }
         public string Balancer { get; set; }
         public HmacAuthenticationOptions Security { get; set; }
         public ClusterConfigMonitoringSection Monitoring { get; set; }
