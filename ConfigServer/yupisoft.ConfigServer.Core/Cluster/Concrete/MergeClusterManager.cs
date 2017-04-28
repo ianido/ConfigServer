@@ -19,13 +19,11 @@ namespace yupisoft.ConfigServer.Core.Cluster
 
     public class MergeClusterManager : ClusterManager
     {
-
         public MergeClusterManager(IOptions<DatacenterConfigSection> datacenterConfig, IOptions<ClusterConfigSection> clusterConfig, ILogger<IClusterManager> logger, ConfigurationChanger cfgChanger, ConfigServerTenants tenantManager) :
             base(datacenterConfig, clusterConfig, logger, cfgChanger, tenantManager)
         {
 
         }
-
         protected override void Timer_Elapsed(object state)
         {            
             if (selfNode.Mode == Node.NodeMode.Server)
@@ -82,7 +80,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
             _betweenDatacenterTimer.Change(rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat, rndGenerator.Next(_DataCenterMaxIntervalHeartBeat) + _DataCenterMinIntervalHeartBeat);
         }
-
         protected override void Store_Change(ConfigServerTenant tenant, IStoreProvider sender, string entityName)
         {
             
@@ -266,7 +263,6 @@ namespace yupisoft.ConfigServer.Core.Cluster
                 StartNodeHeartBeat();
             }
         }
-
         private void SendHeartBeat(Node node, HeartBeatMessage req)
         {
             StopNodeHeartBeat();
@@ -487,6 +483,5 @@ namespace yupisoft.ConfigServer.Core.Cluster
             }
             return CreateMessageFor(HeartBeartType.Unknow, msg);
         }
-
     }
 }

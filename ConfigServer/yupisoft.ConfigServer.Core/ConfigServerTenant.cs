@@ -140,7 +140,7 @@ namespace yupisoft.ConfigServer.Core
                 List<JHookConfig> jhooks = new List<JHookConfig>();
 
                 foreach (var s in hooks)
-                {                    
+                {   
                     JHookConfig hook = s.Parent.Parent.ToObject<JHookConfig>();
                     jhooks.Add(hook);
                     if (Hooks.ContainsKey(hook.Id))

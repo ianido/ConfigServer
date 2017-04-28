@@ -31,12 +31,16 @@ namespace yupisoft.ConfigServer.Core
             _clusterMan = clusterMan;
             _geoServices = geoServices;
             _sdConfig = sdConfig.Value;
-            _timer = new Timer(new TimerCallback(Timer_Elapsed), tenants, Timeout.Infinite, 1000);
-            _logger.LogInformation("Created ConfigServerServices with " + tenants.Tenants.Count + " tenants.");
+            _timer = new Timer(new TimerCallback(Timer_Elapsed), tenants, Timeout.Infinite, _sdConfig.CheckingInterval);
+            if (!_sdConfig.Enabled)
+                _logger.LogInformation("ServiceDiscovery: NOT enabled in this Node.");
+            else
+                _logger.LogInformation("ServiceDiscovery: ENABLED with " + tenants.Tenants.Count + " tenants.");
 
             //Create Service Discovery Engines
             List<IServiceDiscovery> serv = new List<IServiceDiscovery>();
-            serv.Add(new DNSServer(_sdConfig.DNS, _logger, _tenants, _clusterMan, _geoServices));
+            if (_sdConfig.Enabled && _sdConfig.DNS.Enabled)
+                serv.Add(new DNSServer(_sdConfig.DNS, _logger, _tenants, _clusterMan, _geoServices));
             servers = serv.ToArray();
         }
 
@@ -44,8 +48,9 @@ namespace yupisoft.ConfigServer.Core
         {
             lock (_lock)
             {
+                if (!_sdConfig.Enabled) { return; }
                 _Monitoring = false;
-                _timer.Change(Timeout.Infinite, 1000);
+                _timer.Change(Timeout.Infinite, _sdConfig.CheckingInterval);
             }
         }
 
@@ -53,14 +58,16 @@ namespace yupisoft.ConfigServer.Core
         {
             lock (_lock)
             {
+                if (!_sdConfig.Enabled) { return; }
                 _Monitoring = true;
-                _timer.Change(1000, 1000);
+                _timer.Change(_sdConfig.CheckingInterval, _sdConfig.CheckingInterval);
             }
         }
 
         public void StartServiceDiscovery()
         {
-            foreach(var sd in servers)
+            if (!_sdConfig.Enabled) { return; }
+            foreach (var sd in servers)
             {
                 sd.AttemptStart();
             }
@@ -68,6 +75,7 @@ namespace yupisoft.ConfigServer.Core
 
         public void StopServiceDiscovery()
         {
+            if (!_sdConfig.Enabled) {  return; }
             foreach (var sd in servers)
             {
                 sd.AttemptStop();
@@ -78,6 +86,7 @@ namespace yupisoft.ConfigServer.Core
         {
             lock (_lock)
             {
+                if (!_sdConfig.Enabled) { return; }
                 if (_Monitoring)
                 {
                     foreach (var tenant in _tenants.Tenants)
@@ -97,6 +106,7 @@ namespace yupisoft.ConfigServer.Core
                 }
             }
         }
+
 
     }
 }

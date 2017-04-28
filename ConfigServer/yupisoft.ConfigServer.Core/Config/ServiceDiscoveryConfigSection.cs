@@ -31,10 +31,13 @@ namespace yupisoft.ConfigServer.Core
 
     public class ServiceDiscoveryConfigSection
     {
+        public bool Enabled { get; set; }
+        public int CheckingInterval { get; set; }
         public DNSConfigSection DNS { get; set; }
         public ServiceDiscoveryConfigSection()
         {
             DNS = new DNSConfigSection();
+            Enabled = true;
         } 
     }
 }
