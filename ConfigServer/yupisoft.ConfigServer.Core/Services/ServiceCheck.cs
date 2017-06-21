@@ -66,6 +66,7 @@ namespace yupisoft.ConfigServer.Core.Services
             if (checkConfig.CheckType == JServiceCheckType.Http) return new HttpServiceCheck(checkConfig, serviceConfig, logger);
             if (checkConfig.CheckType == JServiceCheckType.Script) return new ScriptServiceCheck(checkConfig, serviceConfig, logger);
             if (checkConfig.CheckType == JServiceCheckType.Tcp) return new TcpServiceCheck(checkConfig, serviceConfig, logger);
+            if (checkConfig.CheckType == JServiceCheckType.WindowsService) return new WindowsServiceCheck(checkConfig, serviceConfig, logger);
             logger.LogWarning("Cant Create a Service Check type:" + checkConfig.CheckType.ToString());
             return null;
         }

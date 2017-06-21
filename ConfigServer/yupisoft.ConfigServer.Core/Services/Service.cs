@@ -45,6 +45,7 @@ namespace yupisoft.ConfigServer.Core.Services
         public ServiceCheckStatus LastCheckStatus { get => _lastCheckStatus; }
         public string Id { get { return Config.Id; } }
         public string Name { get { return Config.Name; } }
+        public bool Discoverable { get { return Config.Discoverable; } }
         public ServiceBalancers Balancer {
             get {
                 if (Config.Balancer.ToLower() == "random")

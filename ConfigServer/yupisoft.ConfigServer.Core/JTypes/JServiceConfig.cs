@@ -13,6 +13,7 @@ namespace yupisoft.ConfigServer.Core
         public string Address { get; set; }
         public string Balancer { get; set; }
         public int Port { get; set; }
+        public bool Discoverable { get; set; }
         public string[] Tags { get; set; }
         public dynamic Config { get; set; }
         public JServiceCheckConfig[] Checks { get; set; }

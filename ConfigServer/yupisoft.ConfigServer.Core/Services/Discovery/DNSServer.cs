@@ -107,7 +107,7 @@ namespace yupisoft.ConfigServer.Core.Services
             foreach (var tenant in _tenants.Tenants)
                 if (tenant.EnableServiceDiscovery)
                     foreach (var service in tenant.Services)
-                        if ((service.Value.Name == serviceName) && (tag == "" || service.Value.Tags.Contains(tag)))
+                        if ((service.Value.Name == serviceName) && (tag == "" || service.Value.Tags.Contains(tag)) && (service.Value.Discoverable))
                             discoverServices.Add(service.Value);
 
             // Reorganize Services base on

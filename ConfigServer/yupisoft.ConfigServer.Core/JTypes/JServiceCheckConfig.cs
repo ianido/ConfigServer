@@ -10,12 +10,14 @@ namespace yupisoft.ConfigServer.Core
         Tcp,
         Http,
         Script,
+        WindowsService,
         Unknow
     }
     public class JServiceCheckConfig
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public string WindowsServiceName { get; set; }
         public bool Disabled { get; set; }
         public string Http { get; set; }
         public string Tcp { get; set; }
@@ -36,6 +38,8 @@ namespace yupisoft.ConfigServer.Core
                     return JServiceCheckType.Script;
                 if (!string.IsNullOrEmpty(Http))
                     return JServiceCheckType.Http;
+                if (!string.IsNullOrEmpty(WindowsServiceName))
+                    return JServiceCheckType.WindowsService;
                 return JServiceCheckType.Unknow;
             }
         }

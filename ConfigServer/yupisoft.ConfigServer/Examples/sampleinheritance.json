@@ -179,6 +179,26 @@
             "notes": "If the connection is accepted, the status is success, otherwise the status is critical"
           }
         ]
+      },
+      "mssql.windows": {
+        "$service": "Bonjour",
+        "Id": "r04",
+        "description": "Bonjour Service",
+        "tags": ["local"],
+        "address": "127.0.0.1",
+        "port": 0,
+        "discoverable": false,
+        "checks": [
+          {
+            "id": "Bonjour Service",
+            "name": "Bonjour Service check is running",
+            "windowsservicename": "Bonjour Service",
+            "interval": "3s",
+            "timeout": "1s",
+            "disabled": false,
+            "notes": "Check if Service is running"
+          }
+        ]
       }
     }
   }
