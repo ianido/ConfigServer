@@ -8,7 +8,7 @@ image: microsoft/dotnet:1.1.2-sdk
 pipelines:
   default:
     - step:
-        caches:
+        script: 
           - dotnet --version
           - cd ConfigServer
           - dotnet restore
