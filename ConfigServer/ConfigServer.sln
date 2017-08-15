@@ -17,6 +17,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "yupisoft.ConfigServer.WebAd
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "yupisoft.ConfigServer.Tests", "yupisoft.ConfigServer.Tests\yupisoft.ConfigServer.Tests.csproj", "{49A0844C-9E3C-4513-99E8-AF3A45E6E93A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{5715E6C8-9613-4366-AF8E-DE95C2D1AB85}"
+	ProjectSection(SolutionItems) = preProject
+		NuGet.Config = NuGet.Config
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
