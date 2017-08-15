@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: microsoft/dotnet:onbuild
+image: microsoft/dotnet
 
 pipelines:
   default:
@@ -13,6 +13,7 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - export PROJECT_NAME=yupisoft.ConfigServer
           - export TEST_NAME=yupisoft.ConfigServer.Tests
+          - dotnet --version
           - dotnet restore
           - dotnet build $PROJECT_NAME
           - dotnet test $TEST_NAME
