@@ -15,5 +15,8 @@ pipelines:
           - dotnet --version
           - cd ConfigServer
           - dotnet restore
-          - dotnet build
+          - dotnet build yupisoft.ConfigServer.Core -f netstandard1.6
+          - dotnet build yupisoft.ConfigServer.Client -f netstandard1.6
+          - dotnet build yupisoft.ConfigServer.Tests -f netcoreapp1.1
+          - dotnet build yupisoft.ConfigServer.WebAdmin -f netcoreapp1.1
           - dotnet test $TEST_NAME
