@@ -14,7 +14,6 @@ pipelines:
           - export TEST_NAME=yupisoft.ConfigServer.Tests
           - dotnet --version
           - cd ConfigServer
-          - cp NuGet.Config /root/.nuget/NuGet/NuGet.Config
           - dotnet restore
           - dotnet build
           - dotnet test $TEST_NAME
