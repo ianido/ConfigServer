@@ -9,9 +9,6 @@ pipelines:
   default:
     - step:
         caches:
-          - dotnetcore
-        script: # Modify the commands below to build your repository.
-          - export TEST_NAME=yupisoft.ConfigServer.Tests
           - dotnet --version
           - cd ConfigServer
           - dotnet restore
@@ -19,4 +16,5 @@ pipelines:
           - dotnet build yupisoft.ConfigServer.Client -f netstandard1.6
           - dotnet build yupisoft.ConfigServer.Tests -f netcoreapp1.1
           - dotnet build yupisoft.ConfigServer.WebAdmin -f netcoreapp1.1
-          - dotnet test $TEST_NAME
+          - cd yupisoft.ConfigServer.Tests
+          - dotnet test
