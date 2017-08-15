@@ -11,9 +11,9 @@ pipelines:
         caches:
           - dotnetcore
         script: # Modify the commands below to build your repository.
-          - export PROJECT_NAME=yupisoft.ConfigServer
           - export TEST_NAME=yupisoft.ConfigServer.Tests
           - dotnet --version
+          - cd ConfigServer
           - dotnet restore
-          - dotnet build $PROJECT_NAME
+          - dotnet build
           - dotnet test $TEST_NAME
