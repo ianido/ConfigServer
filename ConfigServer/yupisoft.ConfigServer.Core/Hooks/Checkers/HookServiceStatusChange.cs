@@ -40,6 +40,7 @@ namespace yupisoft.ConfigServer.Core.Hooks
         }
 
         protected override async Task<IHookCheckResult> CheckAsync(){
+
             IHookCheckResult result = new HookCheckResult();
             result.Hook = this;
             result.Result = HookCheckStatus.Iddle;
@@ -102,9 +103,8 @@ namespace yupisoft.ConfigServer.Core.Hooks
                 _lastStatusDate = currentServiceStatusUpdate;
                 if ((notifiers.Length > 0) && (notifiers[0] == "" || (notifiers.Contains(currentServiceStatus.ToString().ToLower()))))
                     Notify(result);                    
-                return result;
             }
-            return result;
+            return await Task.FromResult(result);
         } 
     }
 }

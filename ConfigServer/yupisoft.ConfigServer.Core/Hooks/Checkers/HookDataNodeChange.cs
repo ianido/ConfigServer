@@ -46,13 +46,12 @@ namespace yupisoft.ConfigServer.Core.Hooks
                     result.Result = HookCheckStatus.DeleteItem;
                     _lastHashCode = 1;
                     Notify(result);
-                    return result;
                 } else
                 {
                     _logger.LogWarning("Hook(" + this.Id + "): token not found.");
                     _lastHashCode = 1;
-                    return result;
                 }
+                return await Task.FromResult(result);
             }
 
             string stringToken = token.ToString(Formatting.None);
@@ -60,7 +59,6 @@ namespace yupisoft.ConfigServer.Core.Hooks
             
             if (_lastHashCode == 0) {
                 _lastHashCode = hashCode;
-                return result;
             }
             else
             if (_lastHashCode != hashCode)
@@ -74,10 +72,9 @@ namespace yupisoft.ConfigServer.Core.Hooks
 
                 _lastHashCode = hashCode;
 
-                Notify(result);
-                return result;                
+                Notify(result);              
             }
-            return result;
+            return await Task.FromResult(result);
         } 
     }
 }

@@ -12,7 +12,7 @@ namespace ConsoleApp6
 
         public static void RunMethod()
         {
-            bool forcefinish = false;
+            //bool forcefinish = false;
             Task tsk = Task.Factory.StartNew(() =>
             {
                 Console.Write("Running.");
@@ -23,7 +23,7 @@ namespace ConsoleApp6
                     Console.Write(".");
                 }
             }).WithTimeout(TimeSpan.FromSeconds(5)).ContinueWith((t) => {
-                forcefinish = true;
+                //forcefinish = true;
                 Console.WriteLine("");
                 Console.WriteLine("Finished Status:" + t.Status.ToString());
                 Console.WriteLine("Finished Exception:" + t.Exception?.ToString());

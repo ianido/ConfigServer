@@ -28,7 +28,6 @@ namespace yupisoft.ConfigServer.Core.Utils
 
         public static Task<HttpResponseMessage> SendAsync(this HttpClient client, HttpRequestMessage request, CancellationToken cancellationToken, string APPId, string APIKey, bool encrypt = false)
         {
-            HttpResponseMessage response = null;
             string requestContentBase64String = string.Empty;
 
             string requestUri = System.Net.WebUtility.UrlEncode(request.RequestUri.AbsoluteUri).ToLower();

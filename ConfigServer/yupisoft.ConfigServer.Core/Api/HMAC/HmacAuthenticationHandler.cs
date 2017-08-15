@@ -57,7 +57,7 @@ namespace Microsoft.AspNetCore.Authentication.Hmac
             var authorization = Request.Headers["authorization"];
             if (string.IsNullOrEmpty(authorization))
             {
-                return AuthenticateResult.Skip();
+                return await Task.FromResult(AuthenticateResult.Skip());
             }
             var res = Validate(Request);
 
@@ -73,10 +73,10 @@ namespace Microsoft.AspNetCore.Authentication.Hmac
                 var properties = new AuthenticationProperties();
 
                 var ticket = new AuthenticationTicket(principal, properties, Options.AuthenticationScheme);
-                return AuthenticateResult.Success(ticket);
-            }
 
-            return AuthenticateResult.Fail("Authentication failed");
+                return await Task.FromResult(AuthenticateResult.Success(ticket));
+            }
+            return await Task.FromResult(AuthenticateResult.Fail("Authentication failed"));
         }
 
         protected override Task<bool> HandleUnauthorizedAsync(ChallengeContext context)

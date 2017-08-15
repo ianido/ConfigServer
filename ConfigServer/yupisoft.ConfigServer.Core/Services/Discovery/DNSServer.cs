@@ -52,7 +52,6 @@ namespace yupisoft.ConfigServer.Core.Services
                 if (_config.BindAddress.ToLower() != "any") addr = IPAddress.Parse(_config.BindAddress);
                 IPEndPoint endpoint = new IPEndPoint(addr, _config.Port);
                 _dnsServer = new DnsServer(endpoint, _config.udpListenerCount, _config.tcpListenerCount);
-                _dnsServer.ClientConnected += Server_ClientConnected;
                 _dnsServer.QueryReceived += Server_QueryReceived;
                 _logger.LogInformation("Starting DNS Server on Port:" + _config.Port + " Masterzone: " + _config.Mainzone + " Bound to Interface :" + _config.BindAddress);
                 _dnsServer.Start();
@@ -632,11 +631,6 @@ namespace yupisoft.ConfigServer.Core.Services
         private void ValidResponse(DnsMessage response, QueryReceivedEventArgs eventArgs)
         {
             response.ReturnCode = ReturnCode.NoError;
-        }
-
-        private async Task Server_ClientConnected(object sender, ClientConnectedEventArgs eventArgs)
-        {
-            
         }
     }
 }

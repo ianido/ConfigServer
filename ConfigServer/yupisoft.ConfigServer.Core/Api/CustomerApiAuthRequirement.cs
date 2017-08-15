@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Builder
         {
             if (context.User.HasClaim(claim => claim.Type == ClaimTypes.Role && claim.Value == "Customer"))
             {
-                context.Succeed(requirement);
+                await Task.Run(() => context.Succeed(requirement));                
             }
         }
     }
